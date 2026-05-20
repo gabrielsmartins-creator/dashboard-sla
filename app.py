@@ -1,4 +1,4 @@
-import streamlit as st
+mport streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -215,15 +215,17 @@ def normalize_columns(df):
 def find_excel_file():
     base = Path.cwd()
     preferred = [
-        "MODAL REALIZADO_Dados completos.xlsx",
         "dashboard_base_com_geografia.xlsx",
+        "dashboard_final_situacao_estilizado.xlsx",
+        "dashboard_final_situacao_ok.xlsx",
+        "dashboard_final_situacao_estilizado",
     ]
     for name in preferred:
         p = base / name
         if p.exists() and p.is_file():
             return p
 
-    for pattern in ["*.xlsx", "*.xlsm", "*.xls", "*.csv"]:
+    for pattern in ["*.xlsx", "*.xlsm", "*.xls"]:
         files = [p for p in base.glob(pattern) if p.is_file()]
         if files:
             return files[0]
@@ -232,111 +234,120 @@ def find_excel_file():
 @st.cache_data(show_spinner=False)
 def load_excel_path(path_str):
     path = Path(path_str)
-    if path.suffix.lower() == ".csv":
-        return pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig")
-    xls = pd.ExcelFile(path)
+    xls = pd.ExcelFile(path, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
     sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
-    return pd.read_excel(path, sheet_name=sheet)
+    return pd.read_excel(path, sheet_name=sheet, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
 
 @st.cache_data(show_spinner=False)
 def load_excel_upload(uploaded):
-    if uploaded.name.endswith('.csv'):
-        return pd.read_csv(uploaded, sep=None, engine="python", encoding="utf-8-sig")
     xls = pd.ExcelFile(uploaded)
     sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
     return pd.read_excel(uploaded, sheet_name=sheet)
 
-# =========================
-# NOVA FUNÇÃO DE PREPARAÇÃO (ETL AUTOMATIZADO)
-# =========================
-def prep_data(df_raw):
-    df = normalize_columns(df_raw)
+def prep_data(df):
+    df = normalize_columns(df)
 
-    # 1. Mapeamento de Colunas da Base Bruta
-    rename_map = {
-        'data entrega prevista cliente': 'data_entrega_prevista',
-        'data finalização': 'data_entrega_realizada',
-        'pedido': 'pedido_gemco'
-    }
-    df = df.rename(columns=rename_map)
+    # Numeric columns
+    for c in ["prazo_cliente", "realizado_cliente", "oportunidade", "atraso_dias",
+              "aux_antecipado", "aux_no_prazo", "aux_atrasado", "gap_prazo", "eficiencia_entrega"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # 2. Conversão de Datas
-    date_cols = ['data_libfat', 'data_entrega_prevista', 'data_entrega_realizada']
-    for col in date_cols:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dt.normalize()
+    # Modal normalization
+    if "modal" not in df.columns:
+        if "modal transp" in df.columns:
+            src = df["modal transp"].astype(str).str.upper()
+            df["modal"] = np.select(
+                [
+                    src.str.contains("COURIER", na=False) | src.str.contains("COURRIER", na=False),
+                    src.str.contains("RODO", na=False) | src.str.contains("RODOV", na=False),
+                    src.str.contains("MICRO", na=False),
+                ],
+                ["COURIER", "RODO", "MICRO"],
+                default="OUTROS",
+            )
+        else:
+            df["modal"] = "OUTROS"
 
-    # 3. Cálculo de Lead Time (Dias entre Faturamento e Entrega)
-    data_base = df.get('data_libfat', pd.Series(pd.NaT, index=df.index))
-    
-    if 'data_entrega_prevista' in df.columns:
-        df['prazo_cliente'] = (df['data_entrega_prevista'] - data_base).dt.days
-    else:
-        df['prazo_cliente'] = np.nan
+    df["modal"] = (
+        df["modal"].astype(str).str.upper().str.strip()
+        .replace({
+            "COURRIER": "COURIER",
+            "COURIER ": "COURIER",
+            "RODOVIARIO": "RODO",
+            "RODOVIÁRIO": "RODO",
+            "MICRO ": "MICRO",
+        })
+    )
 
-    if 'data_entrega_realizada' in df.columns:
-        df['realizado_cliente'] = (df['data_entrega_realizada'] - data_base).dt.days
-    else:
-        df['realizado_cliente'] = np.nan
-
-    # 4. Tratamento do Modal
-    if "modal transp" in df.columns:
-        src = df["modal transp"].astype(str).str.upper()
-        df["modal"] = np.select(
-            [
-                src.str.contains("COURIER|COURRIER", na=False),
-                src.str.contains("RODO|RODOV", na=False),
-                src.str.contains("MICRO", na=False),
-            ],
-            ["COURIER", "RODO", "MICRO"],
-            default="OUTROS",
-        )
-    elif "modal" not in df.columns:
-        df["modal"] = "OUTROS"
-
-    # 5. Criação de Colunas de Status e KPIs (Lógica Reconstruída)
-    df['prazo_cliente'] = pd.to_numeric(df['prazo_cliente'], errors="coerce")
-    df['realizado_cliente'] = pd.to_numeric(df['realizado_cliente'], errors="coerce")
-
-    conditions = [
-        df["realizado_cliente"] < df["prazo_cliente"],
-        df["realizado_cliente"] == df["prazo_cliente"],
-        df["realizado_cliente"] > df["prazo_cliente"],
-    ]
-    df["status_sla"] = np.select(conditions, ["Antecipado", "No Prazo", "Atrasado"], default="Indefinido")
-
-    df["aux_antecipado"] = (df["status_sla"] == "Antecipado").astype(int)
-    df["aux_no_prazo"] = (df["status_sla"] == "No Prazo").astype(int)
-    df["aux_atrasado"] = (df["status_sla"] == "Atrasado").astype(int)
-
-    df["oportunidade"] = (df["prazo_cliente"] - df["realizado_cliente"]).clip(lower=0)
-    df["atraso_dias"] = (df["realizado_cliente"] - df["prazo_cliente"]).clip(lower=0)
-    df["gap_prazo"] = df["prazo_cliente"] - df["realizado_cliente"]
-    df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
-
-    # 6. Preenchimento de Dimensões e Normalização
+    # Mandatory dimension columns
     defaults = {
-        "geografia_comercial": "N/A", "uf cliente": "N/A", "cidade cliente": "N/A",
-        "localizacao_comercial": "N/A", "ecc": "N/A", "cd faturamento": "N/A",
-        "cd responsavel": "N/A", "transportador (grupo)": "N/A", "transportador": "N/A",
-        "situacao": "N/A", "cep_cliente": "N/A", "mes": "N/A"
+        "geografia_comercial": "N/A",
+        "uf cliente": "N/A",
+        "cidade cliente": "N/A",
+        "localizacao_comercial": "N/A",
+        "ecc": "N/A",
+        "cd faturamento": "N/A",
+        "cd responsavel": "N/A",
+        "transportador (grupo)": "N/A",
+        "transportador": "N/A",
+        "situacao": "N/A",
+        "cep_cliente": "N/A",
+        "cep_prefixo3": "N/A",
+        "cep_prefixo5": "N/A",
+        "mes": "N/A",
     }
     for col, default in defaults.items():
         if col not in df.columns:
             df[col] = default
         df[col] = df[col].fillna(default).astype(str)
 
-    # 7. CEP e Mês
-    if 'data_libfat' in df.columns:
-        df['mes'] = df['data_libfat'].dt.to_period("M").astype(str)
-    
+    # CEP prefixes if missing
     if "cep_cliente" in df.columns:
         cep = df["cep_cliente"].astype(str).str.replace(r"\D", "", regex=True)
-        df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
-        df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
+        if "cep_prefixo3" not in df.columns or (df["cep_prefixo3"] == "N/A").all():
+            df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
+        if "cep_prefixo5" not in df.columns or (df["cep_prefixo5"] == "N/A").all():
+            df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
+
+    # Month if missing
+    if "mes" not in df.columns or (df["mes"] == "N/A").all():
+        for date_col in ["data finalização", "data_libfat", "data entrega prevista cliente", "data_entrega_prevista"]:
+            if date_col in df.columns:
+                d = pd.to_datetime(df[date_col], errors="coerce", dayfirst=True)
+                if d.notna().any():
+                    df["mes"] = d.dt.to_period("M").astype(str)
+                    break
 
     if "pedido_gemco" not in df.columns:
         df["pedido_gemco"] = np.arange(len(df)) + 1
+
+    if "status_sla" not in df.columns:
+        df["status_sla"] = np.select(
+            [
+                df["realizado_cliente"] < df["prazo_cliente"],
+                df["realizado_cliente"] == df["prazo_cliente"],
+                df["realizado_cliente"] > df["prazo_cliente"],
+            ],
+            ["Antecipado", "No Prazo", "Atrasado"],
+            default="Indefinido",
+        )
+
+    if "aux_antecipado" not in df.columns:
+        df["aux_antecipado"] = (df["status_sla"].astype(str).str.lower() == "antecipado").astype(int)
+    if "aux_no_prazo" not in df.columns:
+        df["aux_no_prazo"] = (df["status_sla"].astype(str).str.lower().isin(["no prazo", "dentro do prazo"])).astype(int)
+    if "aux_atrasado" not in df.columns:
+        df["aux_atrasado"] = (df["status_sla"].astype(str).str.lower() == "atrasado").astype(int)
+
+    if "oportunidade" not in df.columns:
+        df["oportunidade"] = (df["prazo_cliente"] - df["realizado_cliente"]).clip(lower=0)
+    if "atraso_dias" not in df.columns:
+        df["atraso_dias"] = (df["realizado_cliente"] - df["prazo_cliente"]).clip(lower=0)
+    if "gap_prazo" not in df.columns:
+        df["gap_prazo"] = df["prazo_cliente"] - df["realizado_cliente"]
+    if "eficiencia_entrega" not in df.columns:
+        df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
 
     return df
 
@@ -467,6 +478,7 @@ def style_table(df):
 
 
 def format_dataframe_values(df):
+    """Formatação leve para a aba Base, sem Pandas Styler."""
     view = prepare_display(df)
     out = view.copy()
 
@@ -558,9 +570,9 @@ def line(df, x, y, title, color=None, height=420):
     return fig
 
 # =========================
-# LOAD ATUALIZADO
+# LOAD
 # =========================
-uploaded = st.file_uploader("Carregar planilha Bruta (Excel ou CSV)", type=["xlsx", "xlsm", "xls", "csv"])
+uploaded = st.file_uploader("Carregar planilha Excel", type=["xlsx", "xlsm", "xls"])
 try:
     if uploaded is not None:
         raw = load_excel_upload(uploaded)
@@ -568,16 +580,15 @@ try:
     else:
         excel_path = find_excel_file()
         if excel_path is None:
-            st.error("Não encontrei nenhuma planilha na pasta. Envie o arquivo bruto pelo botão acima.")
+            st.error("Não encontrei nenhuma planilha Excel na pasta. Envie a planilha pelo botão acima.")
             st.stop()
         raw = load_excel_path(str(excel_path))
         source_name = excel_path.name
 except Exception as e:
-    st.error("Não consegui abrir a planilha. Verifique o formato do arquivo.")
+    st.error("Não consegui abrir a planilha. Verifique se ela tem a aba Base_Filtrada.")
     st.code(str(e))
     st.stop()
 
-# Aplica a preparação que agora faz o ETL completo
 df_all = prep_data(raw)
 
 
