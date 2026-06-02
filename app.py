@@ -1,4 +1,6 @@
 import streamlit as st
+import base64
+import csv
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -25,6 +27,17 @@ YELLOW = "#F79009"
 RED = "#F04438"
 GRAY = "#667085"
 
+APP_DIR = Path(__file__).parent if "__file__" in globals() else Path.cwd()
+LOGO_PATH = APP_DIR / "assets" / "logo_magalog.png"
+
+def image_to_base64(path):
+    try:
+        if path.exists():
+            return base64.b64encode(path.read_bytes()).decode("utf-8")
+    except Exception:
+        return ""
+    return ""
+
 st.markdown("""
 <style>
 .main { background: #F4F8FF; }
@@ -32,7 +45,7 @@ st.markdown("""
 h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
 
 .top-shell {
-    background: linear-gradient(135deg, #071B45 0%, #0B3A75 52%, #155EEF 100%);
+    background: linear-gradient(135deg, #071B45 0%, #0B3A75 48%, #8FD8FF 100%);
     padding: 24px 26px;
     border-radius: 24px;
     color: white;
@@ -109,9 +122,49 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     font-size: .85rem;
     color: #667085;
 }
-[data-testid="stTabs"] button {
+[data-testid="stTabs"] {
+    margin-top: 8px;
+}
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 10px;
+    border-bottom: 0 !important;
+    align-items: center;
+    background: transparent;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    height: 38px;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 10px 10px 0 0;
+    border: 1px solid #D7E6FA;
+    border-bottom: 0;
+    background: #FFFFFF;
+    color: #667085;
+    font-weight: 900;
+    box-shadow: 0 6px 16px rgba(11,58,117,.06);
+    transition: all .18s ease-in-out;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] p {
+    color: inherit !important;
+    font-weight: 900 !important;
+    font-size: .88rem;
+}
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    background: #EAF2FF;
     color: #0B3A75;
-    font-weight: 800;
+    border-color: #9EC5FE;
+}
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
+    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%) !important;
+    color: #FFFFFF !important;
+    border-color: #155EEF !important;
+    box-shadow: 0 10px 24px rgba(21,94,239,.22);
+}
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] p {
+    color: #FFFFFF !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    display: none;
 }
 [data-testid="stDataFrame"] {
     border: 1px solid #D7E6FA;
@@ -209,12 +262,17 @@ def kpi(label, value, sub="", kind="blue"):
 
 def normalize_columns(df):
     out = df.copy()
-    out.columns = [str(c).strip().lower() for c in out.columns]
+    out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
     return out
 
 def find_excel_file():
     base = Path.cwd()
     preferred = [
+        "MODALREALIZADO_Dadoscompletos_data(7).csv",
+        "MODAL_REALIZADO.csv",
+        "modal_realizado.csv",
+        "MODAL_REALIZADO.xlsx",
+        "modal_realizado.xlsx",
         "dashboard_base_com_geografia.xlsx",
         "dashboard_final_situacao_estilizado.xlsx",
         "dashboard_final_situacao_ok.xlsx",
@@ -225,21 +283,45 @@ def find_excel_file():
         if p.exists() and p.is_file():
             return p
 
-    for pattern in ["*.xlsx", "*.xlsm", "*.xls"]:
+    for pattern in ["*.csv", "*.xlsx", "*.xlsm", "*.xls"]:
         files = [p for p in base.glob(pattern) if p.is_file()]
         if files:
             return files[0]
     return None
 
+def read_csv_flexible(file_obj):
+    tentativas = [
+        {"sep": ";", "engine": "python", "encoding": "utf-8-sig", "quoting": csv.QUOTE_NONE},
+        {"sep": None, "engine": "python", "encoding": "utf-8-sig"},
+        {"sep": ";", "engine": "python", "encoding": "latin1", "quoting": csv.QUOTE_NONE},
+        {"sep": None, "engine": "python", "encoding": "latin1"},
+    ]
+    ultimo_erro = None
+    for params in tentativas:
+        try:
+            if hasattr(file_obj, "seek"):
+                file_obj.seek(0)
+            df = pd.read_csv(file_obj, **params)
+            if len(df.columns) > 1:
+                return df
+        except Exception as e:
+            ultimo_erro = e
+    raise ultimo_erro
+
 @st.cache_data(show_spinner=False)
 def load_excel_path(path_str):
     path = Path(path_str)
+    if path.suffix.lower() == ".csv":
+        return read_csv_flexible(path)
     xls = pd.ExcelFile(path, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
     sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
     return pd.read_excel(path, sheet_name=sheet, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
 
 @st.cache_data(show_spinner=False)
 def load_excel_upload(uploaded):
+    name = getattr(uploaded, "name", "").lower()
+    if name.endswith(".csv"):
+        return read_csv_flexible(uploaded)
     xls = pd.ExcelFile(uploaded)
     sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
     return pd.read_excel(uploaded, sheet_name=sheet)
@@ -359,6 +441,22 @@ def apply_filter(df, col, value):
     if value == "TODOS":
         return df
     return df[df[col].astype(str) == value]
+
+def prazo_ate_filter(label, col, df):
+    valores = pd.to_numeric(df[col], errors="coerce") if col in df.columns else pd.Series(dtype="float64")
+    max_dias = valores.dropna().max()
+    if pd.isna(max_dias) or max_dias < 1:
+        return "TODOS"
+    max_dias = int(np.ceil(max_dias))
+    opcoes = ["TODOS"] + [f"Até {i} dia" if i == 1 else f"Até {i} dias" for i in range(1, max_dias + 1)]
+    return st.selectbox(label, opcoes)
+
+def apply_prazo_ate_filter(df, col, value):
+    if value == "TODOS" or col not in df.columns:
+        return df
+    limite = int(str(value).replace("Até", "").replace("dias", "").replace("dia", "").strip())
+    valores = pd.to_numeric(df[col], errors="coerce")
+    return df[valores <= limite]
 
 def agg_metrics(df, group_cols):
     if isinstance(group_cols, str):
@@ -572,7 +670,7 @@ def line(df, x, y, title, color=None, height=420):
 # =========================
 # LOAD
 # =========================
-uploaded = st.file_uploader("Carregar planilha Excel", type=["xlsx", "xlsm", "xls"])
+uploaded = st.file_uploader("Carregar planilha Modal Realizado", type=["csv", "xlsx", "xlsm", "xls"])
 try:
     if uploaded is not None:
         raw = load_excel_upload(uploaded)
@@ -580,12 +678,12 @@ try:
     else:
         excel_path = find_excel_file()
         if excel_path is None:
-            st.error("Não encontrei nenhuma planilha Excel na pasta. Envie a planilha pelo botão acima.")
+            st.error("Não encontrei a planilha Modal Realizado na pasta. Envie a base pelo botão acima.")
             st.stop()
         raw = load_excel_path(str(excel_path))
         source_name = excel_path.name
 except Exception as e:
-    st.error("Não consegui abrir a planilha. Verifique se ela tem a aba Base_Filtrada.")
+    st.error("Não consegui abrir a base Modal Realizado. Verifique se o arquivo está em CSV ou Excel válido.")
     st.code(str(e))
     st.stop()
 
@@ -595,14 +693,22 @@ df_all = prep_data(raw)
 # =========================
 # HEADER
 # =========================
+logo_b64 = image_to_base64(LOGO_PATH)
+logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-height:58px; max-width:190px; object-fit:contain;" />' if logo_b64 else ""
+
 st.markdown(f"""
 <div class="top-shell">
-    <div class="top-title">Last Mile SLA Intelligence</div>
-    <div class="top-subtitle">Painel operacional para redução de prazo cliente por Geografia, Modal, ECC, CDs, Localização, Transportador, Cidade e CEP.</div>
-    <div style="margin-top:14px">
-        <span class="badge">Fonte: {source_name}</span>
-        <span class="badge">NS = Antecipado + No Prazo</span>
-        <span class="badge">Foco: redução de prazo com baixo risco</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap;">
+        <div>
+            <div class="top-title">Last Mile SLA Intelligence</div>
+            <div class="top-subtitle">Painel operacional para redução de prazo cliente por Geografia, Modal, ECC, CDs, Localização, Transportador, Cidade e CEP.</div>
+            <div style="margin-top:14px">
+                <span class="badge">Fonte: {source_name}</span>
+                <span class="badge">NS = Antecipado + No Prazo</span>
+                <span class="badge">Foco: redução de prazo com baixo risco</span>
+            </div>
+        </div>
+        <div>{logo_html}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -630,15 +736,17 @@ with f6:
 with f7:
     cd_responsavel = filter_one_click("CD responsável", "cd responsavel", df_all)
 with f8:
-    periodo = filter_one_click("Período", "mes", df_all)
+    prazo_ofertado = prazo_ate_filter("Prazo ofertado", "prazo_cliente", df_all)
 
-f9, f10, f11 = st.columns([1.2, 1.2, 1.2])
+f9, f10, f11, f12 = st.columns([1.2, 1.2, 1.2, 1])
 with f9:
     localizacao = filter_one_click("Localização comercial", "localizacao_comercial", df_all)
 with f10:
     transportador = filter_one_click("Transportador (grupo)", "transportador (grupo)", df_all)
 with f11:
     cidade = filter_one_click("Cidade", "cidade cliente", df_all)
+with f12:
+    prazo_realizado = prazo_ate_filter("Prazo realizado", "realizado_cliente", df_all)
 
 min_volume = st.slider("Volume mínimo para rankings", 1, 1000, 50, step=10)
 
@@ -654,9 +762,11 @@ for col, val in [
     ("localizacao_comercial", localizacao),
     ("transportador (grupo)", transportador),
     ("cidade cliente", cidade),
-    ("mes", periodo),
 ]:
     df = apply_filter(df, col, val)
+
+df = apply_prazo_ate_filter(df, "prazo_cliente", prazo_ofertado)
+df = apply_prazo_ate_filter(df, "realizado_cliente", prazo_realizado)
 
 if busca:
     mask = (
