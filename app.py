@@ -122,45 +122,7 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     font-size: .85rem;
     color: #667085;
 }
-/* Abas com visual azul em modo seguro.
-   Evita esconder/remover elementos internos do Streamlit, reduzindo risco de erro visual no Streamlit Cloud. */
-[data-testid="stTabs"] {
-    margin-top: 10px;
-}
-[data-testid="stTabs"] [role="tablist"] {
-    gap: 8px;
-    border-bottom: 1px solid #D7E6FA;
-    align-items: center;
-    padding-bottom: 6px;
-}
-[data-testid="stTabs"] button[role="tab"] {
-    border-radius: 10px;
-    border: 1px solid #D7E6FA;
-    background: #FFFFFF;
-    color: #0B3A75;
-    font-weight: 900;
-    padding: 8px 14px;
-    box-shadow: 0 4px 12px rgba(11,58,117,.06);
-}
-[data-testid="stTabs"] button[role="tab"] p {
-    color: inherit !important;
-    font-weight: 900 !important;
-    font-size: .88rem;
-}
-[data-testid="stTabs"] button[role="tab"]:hover {
-    background: #EAF2FF;
-    border-color: #9EC5FE;
-    color: #071B45;
-}
-[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%);
-    border-color: #155EEF;
-    color: #FFFFFF;
-    box-shadow: 0 8px 20px rgba(21,94,239,.18);
-}
-[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-    color: #FFFFFF !important;
-}
+/* Abas Streamlit: sem CSS customizado nesta versão estável. */
 [data-testid="stDataFrame"] {
     border: 1px solid #D7E6FA;
     border-radius: 16px;
