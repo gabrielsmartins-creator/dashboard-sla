@@ -1,10 +1,10 @@
 import streamlit as st
-import base64
 import csv
 import pandas as pd
 import numpy as np
 import plotly.express as px
 from pathlib import Path
+
 
 st.set_page_config(
     page_title="Last Mile SLA Intelligence",
