@@ -1,5 +1,4 @@
 import streamlit as st
-import base64
 import csv
 import pandas as pd
 import numpy as np
@@ -26,17 +25,6 @@ GREEN_DARK = "#027A48"
 YELLOW = "#F79009"
 RED = "#F04438"
 GRAY = "#667085"
-
-APP_DIR = Path(__file__).parent if "__file__" in globals() else Path.cwd()
-LOGO_PATH = APP_DIR / "assets" / "logo_magalog.png"
-
-def image_to_base64(path):
-    try:
-        if path.exists():
-            return base64.b64encode(path.read_bytes()).decode("utf-8")
-    except Exception:
-        return ""
-    return ""
 
 st.markdown("""
 <style>
@@ -650,9 +638,6 @@ df_all = prep_data(raw)
 # =========================
 # HEADER
 # =========================
-logo_b64 = image_to_base64(LOGO_PATH)
-logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-height:58px; max-width:190px; object-fit:contain;" />' if logo_b64 else ""
-
 st.markdown(f"""
 <div class="top-shell">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap;">
@@ -665,7 +650,6 @@ st.markdown(f"""
                 <span class="badge">Foco: redução de prazo com baixo risco</span>
             </div>
         </div>
-        <div>{logo_html}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
