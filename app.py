@@ -31,6 +31,9 @@ GRAY = "#667085"
 
 APP_DIR = Path(__file__).parent if "__file__" in globals() else Path.cwd()
 LOGO_PATH = APP_DIR / "assets" / "logo_magalog.png"
+MAX_UPLOAD_MB = 200
+BASE_PREVIEW_ROWS = 5000
+
 
 def image_to_base64(path):
     try:
@@ -629,6 +632,17 @@ def line(df, x, y, title, color=None, height=420):
 # LOAD
 # =========================
 uploaded = st.file_uploader("Carregar planilha Modal Realizado", type=["csv", "xlsx", "xlsm", "xls"])
+
+if uploaded is not None:
+    tamanho_mb = getattr(uploaded, "size", 0) / (1024 * 1024)
+    if tamanho_mb > MAX_UPLOAD_MB:
+        st.error(
+            f"Arquivo muito grande: {tamanho_mb:.1f} MB. "
+            f"Para evitar queda no Streamlit Cloud, envie uma base com até {MAX_UPLOAD_MB} MB "
+            "ou gere uma versão filtrada em CSV."
+        )
+        st.stop()
+
 try:
     if uploaded is not None:
         raw = load_excel_upload(uploaded)
@@ -793,17 +807,21 @@ if not rank_loc.empty:
 # =========================
 # TABS
 # =========================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "📌 Executivo",
-    "🌎 Geografia",
-    "🎯 SLA sugerido",
-    "⏱️ Prazo x Realizado",
-    "🚚 Transportador",
-    "📍 CEP / Cidade",
-    "🧾 Base"
-])
+pagina = st.radio(
+    "Seção do dashboard",
+    [
+        "Executivo",
+        "Geografia",
+        "SLA sugerido",
+        "Prazo x Realizado",
+        "Transportador",
+        "CEP / Cidade",
+        "Base",
+    ],
+    horizontal=True,
+)
 
-with tab1:
+if pagina == "Executivo":
     c1, c2 = st.columns([1.1, 1])
     with c1:
         top = rank_loc.head(15)
@@ -838,7 +856,7 @@ with tab1:
     if not periodo_df.empty:
         st.plotly_chart(line(periodo_df, "mes", "ns", "Evolução do NS por Modal", color="modal", height=430), width="stretch")
 
-with tab2:
+elif pagina == "Geografia":
     st.subheader("Análise por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
     geo = geo[geo["pedidos"] >= min_volume]
@@ -856,7 +874,7 @@ with tab2:
     gl = gl[gl["pedidos"] >= min_volume]
     st.dataframe(style_table(gl.head(250)), width="stretch")
 
-with tab3:
+elif pagina == "SLA sugerido":
     st.subheader("Ranking de SLA sugerido e redução de prazo")
     dim_label = st.selectbox(
         "Dimensão",
@@ -883,7 +901,7 @@ with tab3:
                             "Score de prioridade para redução", color="classe_acao", orientation="h", height=720),
                         width="stretch")
 
-with tab4:
+elif pagina == "Prazo x Realizado":
     st.subheader("Lead Time: prazo prometido x realizado")
     lead = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "prazo_cliente", "realizado_cliente"], dropna=False).agg(
         pedidos=("pedido_gemco", "nunique"),
@@ -916,7 +934,7 @@ with tab4:
                         "Volume por prazo ofertado", color="modal", orientation="h", height=540),
                     width="stretch")
 
-with tab5:
+elif pagina == "Transportador":
     st.subheader("Negociação por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"])
     lt = lt[lt["pedidos"] >= min_volume]
@@ -947,7 +965,7 @@ with tab5:
         fig.update_yaxes(gridcolor="#E5EEF9")
         st.plotly_chart(fig, width="stretch")
 
-with tab6:
+elif pagina == "CEP / Cidade":
     st.subheader("Cidade e CEP")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
     cidade_df = cidade_df[cidade_df["pedidos"] >= min_volume]
@@ -972,10 +990,12 @@ with tab6:
         fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=650, margin=dict(l=20,r=20,t=60,b=20))
         st.plotly_chart(fig, width="stretch")
 
-with tab7:
+elif pagina == "Base":
     st.subheader("Base filtrada")
     st.caption("A base abaixo já respeita todos os filtros aplicados no topo.")
-    st.dataframe(format_dataframe_values(df), width="stretch")
+    st.caption(f"Exibindo {min(len(df), BASE_PREVIEW_ROWS):,} de {len(df):,} linhas filtradas.".replace(",", "."))
+    st.dataframe(format_dataframe_values(df.head(BASE_PREVIEW_ROWS)), width="stretch")
+    st.caption("O botão abaixo baixa a base filtrada completa, não apenas a prévia exibida na tela.")
     st.download_button(
         "Baixar base filtrada em CSV",
         df.to_csv(index=False).encode("utf-8-sig"),
