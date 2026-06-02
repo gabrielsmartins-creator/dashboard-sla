@@ -122,49 +122,44 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     font-size: .85rem;
     color: #667085;
 }
+/* Abas com visual azul em modo seguro.
+   Evita esconder/remover elementos internos do Streamlit, reduzindo risco de erro visual no Streamlit Cloud. */
 [data-testid="stTabs"] {
-    margin-top: 8px;
+    margin-top: 10px;
 }
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 10px;
-    border-bottom: 0 !important;
+[data-testid="stTabs"] [role="tablist"] {
+    gap: 8px;
+    border-bottom: 1px solid #D7E6FA;
     align-items: center;
-    background: transparent;
+    padding-bottom: 6px;
 }
-[data-testid="stTabs"] [data-baseweb="tab"] {
-    height: 38px;
-    min-height: 38px;
-    padding: 0 18px;
-    border-radius: 10px 10px 0 0;
+[data-testid="stTabs"] button[role="tab"] {
+    border-radius: 10px;
     border: 1px solid #D7E6FA;
-    border-bottom: 0;
     background: #FFFFFF;
-    color: #667085;
+    color: #0B3A75;
     font-weight: 900;
-    box-shadow: 0 6px 16px rgba(11,58,117,.06);
-    transition: all .18s ease-in-out;
+    padding: 8px 14px;
+    box-shadow: 0 4px 12px rgba(11,58,117,.06);
 }
-[data-testid="stTabs"] [data-baseweb="tab"] p {
+[data-testid="stTabs"] button[role="tab"] p {
     color: inherit !important;
     font-weight: 900 !important;
     font-size: .88rem;
 }
-[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+[data-testid="stTabs"] button[role="tab"]:hover {
     background: #EAF2FF;
-    color: #0B3A75;
     border-color: #9EC5FE;
+    color: #071B45;
 }
-[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%) !important;
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%);
+    border-color: #155EEF;
+    color: #FFFFFF;
+    box-shadow: 0 8px 20px rgba(21,94,239,.18);
+}
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
     color: #FFFFFF !important;
-    border-color: #155EEF !important;
-    box-shadow: 0 10px 24px rgba(21,94,239,.22);
-}
-[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] p {
-    color: #FFFFFF !important;
-}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-    display: none;
 }
 [data-testid="stDataFrame"] {
     border: 1px solid #D7E6FA;
