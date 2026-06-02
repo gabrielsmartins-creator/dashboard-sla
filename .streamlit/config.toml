@@ -1,7 +1,5 @@
 [server]
-# Limite máximo de upload por arquivo, em MB.
-# 10240 MB = 10 GB.
-maxUploadSize = 10240
+maxUploadSize = 200
 
 [browser]
 gatherUsageStats = false
