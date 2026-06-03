@@ -1,5 +1,8 @@
 [server]
-maxUploadSize = 200
+# Limite máximo de upload por arquivo, em MB.
+# O Streamlit não permite upload literalmente ilimitado; este valor amplia o limite para 10 GB.
+# O funcionamento real também depende da memória e do ambiente onde o app estiver rodando.
+maxUploadSize = 10240
 
 [browser]
 gatherUsageStats = false
