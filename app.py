@@ -122,6 +122,50 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     font-size: .85rem;
     color: #667085;
 }
+[data-testid="stTabs"] {
+    margin-top: 8px;
+}
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 10px;
+    border-bottom: 0 !important;
+    align-items: center;
+    background: transparent;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    height: 38px;
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 10px 10px 0 0;
+    border: 1px solid #D7E6FA;
+    border-bottom: 0;
+    background: #FFFFFF;
+    color: #667085;
+    font-weight: 900;
+    box-shadow: 0 6px 16px rgba(11,58,117,.06);
+    transition: all .18s ease-in-out;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] p {
+    color: inherit !important;
+    font-weight: 900 !important;
+    font-size: .88rem;
+}
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    background: #EAF2FF;
+    color: #0B3A75;
+    border-color: #9EC5FE;
+}
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
+    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%) !important;
+    color: #FFFFFF !important;
+    border-color: #155EEF !important;
+    box-shadow: 0 10px 24px rgba(21,94,239,.22);
+}
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] p {
+    color: #FFFFFF !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    display: none;
+}
 [data-testid="stDataFrame"] {
     border: 1px solid #D7E6FA;
     border-radius: 16px;
@@ -162,7 +206,7 @@ DISPLAY_NAMES = {
     "mediana_realizado": "Mediana realizada",
     "oportunidade_media": "Oportunidade média",
     "gap_medio": "Gap médio",
-    "eficiencia_media": "Eficiência média",
+    "eficiencia_media": "Efência média",
     "sla_sugerido_p80": "SLA sugerido P80",
     "reducao_media_potencial": "Redução média potencial",
     "score_prioridade": "Score prioridade",
@@ -253,7 +297,7 @@ def read_csv_flexible(file_obj):
         {"sep": None, "engine": "python", "encoding": "latin1"},
     ]
     ultimo_erro = None
-    for params in tentativas:
+    for params in tentatives:
         try:
             if hasattr(file_obj, "seek"):
                 file_obj.seek(0)
@@ -559,7 +603,7 @@ def format_dataframe_values(df):
                 )
             else:
                 out[c] = pd.to_numeric(out[c], errors="coerce").map(
-                    lambda x: "" if pd.isna(x) else f"{x:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    lambda x: "" if pd.isna(x) else f"{x:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
                 )
     return out
 
@@ -754,24 +798,20 @@ pct_ant = antecipados / max(pedidos, 1)
 pct_prazo = no_prazo / max(pedidos, 1)
 pct_atr = atrasados / max(pedidos, 1)
 ns = (antecipados + no_prazo) / max(pedidos, 1)
-op_total = df["oportunidade"].sum()
 prazo_m = df["prazo_cliente"].mean()
 real_m = df["realizado_cliente"].mean()
 gap_m = df["gap_prazo"].mean()
-p80 = np.nanpercentile(df["realizado_cliente"].dropna(), 80) if df["realizado_cliente"].notna().any() else np.nan
 
 a,b,c,d,e,f = st.columns(6)
 with a: kpi("Pedidos", fmt_num(pedidos), "Pedidos únicos filtrados", "blue")
 with b: kpi("NS geral", fmt_pct(ns), "Antecipado + no prazo", "good" if ns >= .95 else "bad" if ns < .85 else "blue")
 with c: kpi("% antecipado", fmt_pct(pct_ant), "Principal alavanca de redução", "good" if pct_ant >= .70 else "blue")
-with d: kpi("% atraso", fmt_pct(pct_atr), "Risco operational", "bad" if pct_atr >= .10 else "good")
+with d: kpi("% atraso", fmt_pct(pct_atr), "Risco operacional", "bad" if pct_atr >= .10 else "good")
 with e: kpi("Prazo ofertado", f"{fmt_num(prazo_m,1)}d", "Média cliente", "blue")
 with f: kpi("Realizado", f"{fmt_num(real_m,1)}d", "Média real", "blue")
 
-g,h,i,j = st.columns(4)
-with g: kpi("Oportunidade", f"{fmt_num(op_total)} dias", "Soma de dias antecipados", "good")
+h,j = st.columns(2)
 with h: kpi("Gap médio", f"{fmt_num(gap_m,1)}d", "Ofertado - realizado", "blue")
-with i: kpi("P80 realizado", f"{fmt_num(p80,1)}d", "Base para SLA sugerido", "blue")
 with j: kpi("Atrasos", fmt_num(atrasados), "Pedidos fora do prazo", "bad" if atrasados > 0 else "good")
 
 # Insight
@@ -791,25 +831,24 @@ if not rank_loc.empty:
 # =========================
 # TABS
 # =========================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📌 Executivo",
     "🌎 Geografia",
     "🎯 SLA sugerido",
     "⏱️ Prazo x Realizado",
     "🚚 Transportador",
-    "📍 CEP / Cidade",
-    "🧾 Base"
+    "📍 CEP / Cidade"
 ])
 
 with tab1:
     c1, c2 = st.columns([1.1, 1])
     with c1:
-        top = rank_loc.head(100) # AJUSTE 3: Reduzido de .head(15) ou similar para focar no novo limite máximo
+        top = rank_loc.head(15)
         if not top.empty:
             st.plotly_chart(
                 bar(top.sort_values("oportunidade"), "oportunidade", "localizacao_comercial",
                     "Top Localizações por oportunidade", color="classe_acao", orientation="h", height=560),
-                width="stretch"
+                use_container_width=True
             )
     with c2:
         status = pd.DataFrame({
@@ -827,36 +866,18 @@ with tab1:
         )
         fig.update_traces(textinfo="percent+label")
         fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=360, margin=dict(l=20,r=20,t=55,b=20))
-        st.plotly_chart(fig, width="stretch")
-
-        modal_rank = agg_metrics(df, ["modal", "ecc", "cd faturamento", "cd responsavel"])
-        # AJUSTE 2: Trocado temporariamente style_table por prepare_display para evitar o Pandas Styler pesado
-        st.dataframe(prepare_display(modal_rank[["modal","pedidos","% antecipado","% no prazo","% atrasado","ns","oportunidade","media_ofertado","media_realizado","classe_acao"]]), width="stretch")
-
-    periodo_df = agg_metrics(df, ["mes", "modal"])
-    if not periodo_df.empty:
-        st.plotly_chart(line(periodo_df, "mes", "ns", "Evolução do NS por Modal", color="modal", height=430), width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
     st.subheader("Análise por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
     geo = geo[geo["pedidos"] >= min_volume]
-    # AJUSTE 2: Substituído por prepare_display para aliviar a renderização
-    # AJUSTE 3: Reduzido de .head(200) para .head(100)
-    st.dataframe(prepare_display(geo.head(100)), width="stretch")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.plotly_chart(bar(geo.head(100).sort_values("ns"), "ns", "geografia_comercial",
-                            "NS por Geografia", color="modal", orientation="h", height=600), width="stretch")
-    with c2:
-        st.plotly_chart(bar(geo.head(100).sort_values("oportunidade"), "oportunidade", "geografia_comercial",
-                            "Oportunidade por Geografia", color="modal", orientation="h", height=600), width="stretch")
+    st.dataframe(style_table(geo.head(200)), use_container_width=True)
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
     gl = gl[gl["pedidos"] >= min_volume]
-    # AJUSTE 2 e 3: prepare_display aplicado e head reduzido de 250 para 100
-    st.dataframe(prepare_display(gl.head(100)), width="stretch")
+    st.dataframe(style_table(gl.head(250)), use_container_width=True)
 
 with tab3:
     st.subheader("Ranking de SLA sugerido e redução de prazo")
@@ -877,14 +898,13 @@ with tab3:
     rank = agg_metrics(df, dim_map[dim_label])
     rank = rank[rank["pedidos"] >= min_volume]
     cols = [c for c in rank.columns if c in dim_map[dim_label] + ["pedidos", "% antecipado", "% no prazo", "% atrasado", "ns", "oportunidade", "media_ofertado", "media_realizado", "p80_realizado", "sla_sugerido_p80", "reducao_media_potencial", "score_prioridade", "classe_acao"]]
-    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
-    st.dataframe(prepare_display(rank[cols].head(100)), width="stretch")
+    st.dataframe(style_table(rank[cols].head(300)), use_container_width=True)
 
     if not rank.empty:
         first_dim = dim_map[dim_label][-1]
-        st.plotly_chart(bar(rank.head(100).sort_values("score_prioridade"), "score_prioridade", first_dim,
+        st.plotly_chart(bar(rank.head(25).sort_values("score_prioridade"), "score_prioridade", first_dim,
                             "Score de prioridade para redução", color="classe_acao", orientation="h", height=720),
-                        width="stretch")
+                        use_container_width=True)
 
 with tab4:
     st.subheader("Lead Time: prazo prometido x realizado")
@@ -898,97 +918,28 @@ with tab4:
     lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
 
-    heat = lead.pivot_table(index="prazo_cliente", columns="realizado_cliente", values="pedidos", aggfunc="sum", fill_value=0)
-    fig = px.imshow(heat, aspect="auto", color_continuous_scale="Blues", title="Mapa de calor: prazo ofertado x prazo realizado")
-    fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=560, margin=dict(l=20,r=20,t=60,b=20))
-    st.plotly_chart(fig, width="stretch")
-
-    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
-    st.dataframe(prepare_display(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(100)), width="stretch")
-
-    oferta = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "prazo_cliente"], dropna=False).agg(
-        pedidos=("pedido_gemco", "nunique"),
-        antecipados=("aux_antecipado", "sum"),
-        no_prazo=("aux_no_prazo", "sum"),
-        media_realizado=("realizado_cliente", "mean"),
-        p80_realizado=("realizado_cliente", lambda x: np.nanpercentile(x.dropna(), 80) if len(x.dropna()) else np.nan),
-        oportunidade=("oportunidade", "sum"),
-    ).reset_index()
-    oferta["% antecipado"] = oferta["antecipados"] / oferta["pedidos"].replace(0, np.nan)
-    oferta["ns"] = (oferta["antecipados"] + oferta["no_prazo"]) / oferta["pedidos"].replace(0, np.nan)
-    st.plotly_chart(bar(oferta.sort_values("pedidos").tail(100), "pedidos", "prazo_cliente",
-                        "Volume por prazo ofertado", color="modal", orientation="h", height=540),
-                    width="stretch")
+    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(300)), use_container_width=True)
 
 with tab5:
     st.subheader("Negociação por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"])
     lt = lt[lt["pedidos"] >= min_volume]
-    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
-    st.dataframe(prepare_display(lt.head(100)), width="stretch")
+    st.dataframe(style_table(lt.head(300)), use_container_width=True)
     if not lt.empty:
-        st.plotly_chart(bar(lt.head(100).sort_values("oportunidade"), "oportunidade", "transportador (grupo)",
+        st.plotly_chart(bar(lt.head(25).sort_values("oportunidade"), "oportunidade", "transportador (grupo)",
                             "Oportunidade por Transportador (grupo)", color="classe_acao", orientation="h", height=720),
-                        width="stretch")
-
-        fig = px.scatter(
-            lt,
-            x="ns",
-            y="oportunidade",
-            size="pedidos",
-            color="classe_acao",
-            hover_data=["geografia_comercial", "modal", "localizacao_comercial", "transportador (grupo)", "% antecipado", "% atrasado", "media_ofertado", "media_realizado"],
-            title="Mapa de negociação: NS x oportunidade",
-            color_discrete_map={
-                "Redução agressiva": GREEN,
-                "Atacar agora": BLUE,
-                "Testar redução": YELLOW,
-                "Risco operacional": RED,
-                "Monitorar": GRAY,
-            },
-        )
-        fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", title_font_color=PRIMARY, height=560)
-        fig.update_xaxes(tickformat=".0%", gridcolor="#E5EEF9")
-        fig.update_yaxes(gridcolor="#E5EEF9")
-        st.plotly_chart(fig, width="stretch")
+                        use_container_width=True)
 
 with tab6:
     st.subheader("Cidade e CEP")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
     cidade_df = cidade_df[cidade_df["pedidos"] >= min_volume]
-    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(250) para .head(100)
-    st.dataframe(prepare_display(cidade_df.head(100)), width="stretch")
+    st.dataframe(style_table(cidade_df.head(250)), use_container_width=True)
     if not cidade_df.empty:
-        st.plotly_chart(bar(cidade_df.head(100).sort_values("score_prioridade"), "score_prioridade", "cidade cliente",
-                            "Prioridade por Cidade", color="classe_acao", orientation="h", height=720), width="stretch")
+        st.plotly_chart(bar(cidade_df.head(25).sort_values("score_prioridade"), "score_prioridade", "cidade cliente",
+                            "Prioridade por Cidade", color="classe_acao", orientation="h", height=720), use_container_width=True)
 
     cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
     cep5 = cep5[cep5["pedidos"] >= max(5, min_volume // 3)]
     st.subheader("Top CEP5")
-    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
-    st.dataframe(prepare_display(cep5.head(100)), width="stretch")
-    if not cep5.empty:
-        st.plotly_chart(bar(cep5.head(100).sort_values("oportunidade"), "oportunidade", "cep_prefixo5",
-                            "Top CEP5 por oportunidade", color="classe_acao", orientation="h", height=760),
-                        width="stretch")
-
-    cep3 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cep_prefixo3"])
-    if not cep3.empty:
-        matrix = cep3.pivot_table(index="cep_prefixo3", columns="geografia_comercial", values="oportunidade", aggfunc="sum", fill_value=0)
-        fig = px.imshow(matrix, aspect="auto", color_continuous_scale="Blues", title="Densidade CEP3 x Geografia")
-        fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=650, margin=dict(l=20,r=20,t=60,b=20))
-        st.plotly_chart(fig, width="stretch")
-
-with tab7:
-    st.subheader("Base filtrada")
-    st.caption("A base abaixo já respeita todos os filtros aplicados no topo.")
-    
-    # AJUSTE 1: Filtrado para mostrar apenas as primeiras 3000 linhas via df.head(3000)
-    st.dataframe(format_dataframe_values(df.head(3000)), width="stretch")
-    
-    st.download_button(
-        "Baixar base filtrada em CSV",
-        df.to_csv(index=False).encode("utf-8-sig"),
-        file_name="base_filtrada_last_mile_geografia_ecc_cd.csv",
-        mime="text/csv",
-    )
+    st.dataframe(style_table(cep5.head(300)), use_container_width=True)
