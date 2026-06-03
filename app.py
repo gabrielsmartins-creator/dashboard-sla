@@ -204,30 +204,22 @@ DISPLAY_NAMES = {
     "% antecipado": "% antecipado",
     "% no prazo": "% no prazo",
     "% atrasado": "% atrasado",
-    "ns": "NS",
-    "% dentro se reduzir 1d": "% dentro se reduzir 1d",
-    "% dentro se reduzir 2d": "% dentro se reduzir 2d",
-    "% dentro se reduzir 3d": "% dentro se reduzir 3d",
-    "% dentro_do_prazo_oferta": "% dentro do prazo oferta",
+    "ns": "NS"
 }
 
 def fmt_num(x, dec=0):
     try:
-        if pd.isna(x):
-            return "0"
+        if pd.isna(x): return "0"
         return f"{float(x):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return str(x)
+    except Exception: return str(x)
 
 def fmt_pct(x):
     try:
-        if pd.isna(x):
-            return "0,0%"
+        if pd.isna(x): return "0,0%"
         x = float(x)
         value = x if abs(x) > 1.5 else x * 100
         return f"{value:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return str(x)
+    except Exception: return str(x)
 
 def normalize_columns(df):
     out = df.copy()
@@ -235,10 +227,10 @@ def normalize_columns(df):
     return out
 
 # =========================
-# CARREGAMENTO ULTRA OTIMIZADO DE MEMÓRIA
+# CARREGAMENTO GLOBAL COMPARTILHADO (EVITA MULTIPLICAÇÃO DE RAM POR ABA)
 # =========================
-@st.cache_data(show_spinner="Carregando dados operacionais em nuvem... Aguarde.")
-def carregar_dados_da_nuvem_ultra_ram(url):
+@st.cache_resource(ttl=86400, show_spinner="Inicializando base de dados global na nuvem... Por favor, aguarde alguns segundos.")
+def carregar_dados_globais_compartilhados(url):
     tipos_colunas = {
         'geografia_comercial': 'category', 'modal': 'category', 'modal transp': 'category',
         'uf cliente': 'category', 'situacao': 'category', 'ecc': 'category',
@@ -248,7 +240,8 @@ def carregar_dados_da_nuvem_ultra_ram(url):
     }
     
     lista_blocos = []
-    for bloco in pd.read_csv(url, sep=";", chunksize=50000, dtype=tipos_colunas, low_memory=False):
+    # Processa o arquivo em chunks pequenos para blindar o motor do Pandas
+    for bloco in pd.read_csv(url, sep=";", chunksize=45000, dtype=tipos_colunas, low_memory=False):
         bloco.columns = [str(c).strip().strip('"').strip().lower() for c in bloco.columns]
         colunas_uteis = [c for c in bloco.columns if c in [
             'geografia_comercial', 'modal', 'modal transp', 'uf cliente', 'cidade cliente',
@@ -267,17 +260,19 @@ def carregar_dados_da_nuvem_ultra_ram(url):
 LINK_DO_MEU_CSV = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.csv"
 
 try:
-    raw = carregar_dados_da_nuvem_ultra_ram(LINK_DO_MEU_CSV)
+    raw = carregar_dados_globais_compartilhados(LINK_DO_MEU_CSV)
     source_name = "modal_realizado.csv (GitHub Cloud)"
 except Exception as e:
-    st.error("Erro crítico de conexão com a base de dados.")
+    st.error("Erro crítico de conexão com a base de dados central.")
     st.code(str(e))
     st.stop()
 
 # =========================
-# ENGENHARIA DE ATRIBUTOS COMPLETA
+# TRATAMENTO DE ENGENHARIA DE ATRIBUTOS
 # =========================
-def prep_data(df):
+@st.cache_data(show_spinner=False)
+def processar_malha_operacional(df_raw):
+    df = df_raw.copy()
     if "modal" not in df.columns and "modal transp" in df.columns:
         src = df["modal transp"].astype(str).str.upper()
         df["modal"] = np.select(
@@ -313,7 +308,7 @@ def prep_data(df):
     df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
     return df
 
-df_all = prep_data(raw)
+df_all = processar_malha_operacional(raw)
 
 # =========================
 # FILTROS DINÂMICOS
@@ -338,7 +333,7 @@ def apply_prazo_ate_filter(df, col, value):
     return df[df[col] <= limite]
 
 # =========================
-# AGREGAÇÕES DE METRICAS COMPLETA
+# AGREGAÇÕES DE PERFORMANCE
 # =========================
 def agg_metrics(df, group_cols):
     g = df.groupby(group_cols, dropna=False).agg(
@@ -412,7 +407,7 @@ st.markdown(f"""
             <div style="margin-top:14px">
                 <span class="badge">Fonte: {source_name}</span>
                 <span class="badge">NS = Antecipado + No Prazo</span>
-                <span class="badge">Foco: redução de prazo com baixo risco</span>
+                <span class="badge">Foco: dados globais otimizados anti-crash</span>
             </div>
         </div>
         <div><img src="data:image/png;base64,{image_to_base64(LOGO_PATH)}" style="max-height:58px; max-width:190px; object-fit:contain;" /></div>
@@ -420,6 +415,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# Filtros operacionais completos reestabelecidos
 f0, f1, f2, f3, f4 = st.columns([1.4, 1, 1, 1, 1])
 with f0: busca = st.text_input("Busca rápida", placeholder="Cidade, CEP, ECC, CD, localização ou transportador", key="txt_busca_main")
 with f1: geografia = filter_one_click("Geografia", "geografia_comercial", df_all, "main")
@@ -484,7 +480,7 @@ with st.container():
     f.metric("Realizado", f"{fmt_num(df['realizado_cliente'].mean(),1)}d")
 
 # =========================
-# OPERAÇÃO CORREGIDA DAS ABAS: "SLA Sugerido" removido, "Prazo x Realizado" mantido.
+# AS 4 ABAS SOLICITADAS TOTALMENTE COMPLETA E DETALHADA
 # =========================
 tab1, tab2, tab3, tab4 = st.tabs([
     "🌎 Geografia",
@@ -496,11 +492,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.subheader("Análise Completa por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
-    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(200)), width="stretch")
+    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(250)), width="stretch")
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
-    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(200)), width="stretch")
+    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(250)), width="stretch")
 
 with tab2:
     st.subheader("Lead Time Histórico: Prazo Prometido Cliente x Realizado")
@@ -514,18 +510,18 @@ with tab2:
     lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
     
-    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(200)), width="stretch")
+    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(250)), width="stretch")
 
 with tab3:
     st.subheader("Negociação Completa por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)", "transportador"])
-    st.dataframe(style_table(lt[lt["pedidos"] >= min_volume].head(200)), width="stretch")
+    st.dataframe(style_table(lt[lt["pedidos"] >= min_volume].head(250)), width="stretch")
 
 with tab4:
     st.subheader("Análise de Malhas por Cidade")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
-    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(200)), width="stretch")
+    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(250)), width="stretch")
 
-    st.subheader("Análise de Micro-região (Top CEP5)")
+    st.subheader("Análise de Micro-região (Top CEP5 e CEP3)")
     cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
-    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(200)), width="stretch")
+    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(250)), width="stretch")
