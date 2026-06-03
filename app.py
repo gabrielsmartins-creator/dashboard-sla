@@ -275,7 +275,7 @@ except Exception as e:
     st.stop()
 
 # =========================
-# ENGENHARIA DE ATRIBUTOS COMPLETA REESTABELECIDA
+# ENGENHARIA DE ATRIBUTOS COMPLETA
 # =========================
 def prep_data(df):
     if "modal" not in df.columns and "modal transp" in df.columns:
@@ -316,7 +316,7 @@ def prep_data(df):
 df_all = prep_data(raw)
 
 # =========================
-# FILTROS DINÂMICOS COMPLETOS
+# FILTROS DINÂMICOS
 # =========================
 def filter_one_click(label, col, df, key_suffix):
     values = sorted([v for v in df[col].dropna().astype(str).unique() if v and v.lower() != "nan"])
@@ -338,7 +338,7 @@ def apply_prazo_ate_filter(df, col, value):
     return df[df[col] <= limite]
 
 # =========================
-# AGREGAÇÕES REESTABELECIDAS COM TODAS AS COLUNAS ORIGINAIS
+# AGREGAÇÕES DE METRICAS COMPLETA
 # =========================
 def agg_metrics(df, group_cols):
     g = df.groupby(group_cols, dropna=False).agg(
@@ -400,14 +400,6 @@ def style_table(df):
         styler = styler.map(lambda v: "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else "", subset=["Classe ação"])
     return styler
 
-def bar(df, x, y, title, color=None, orientation="v", height=430):
-    fig = px.bar(df, x=x, y=y, color=color, orientation=orientation, title=title,
-                 color_discrete_map={"Redução agressiva": GREEN, "Atacar agora": BLUE, "Testar redução": YELLOW, "Risco operacional": RED, "Monitorar": GRAY, "COURIER": BLUE, "RODO": BLUE_DARK, "MICRO": CYAN})
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color=PRIMARY, title_font_color=PRIMARY, title_font_size=20, height=height, margin=dict(l=20, r=20, t=58, b=20), legend_title_text="")
-    fig.update_xaxes(gridcolor="#E5EEF9")
-    fig.update_yaxes(gridcolor="#E5EEF9")
-    return fig
-
 # =========================
 # INTERFACE DE USUÁRIO
 # =========================
@@ -428,7 +420,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# FILTROS DA OPERAÇÃO COMPLETA RECONSTRUÍDOS
 f0, f1, f2, f3, f4 = st.columns([1.4, 1, 1, 1, 1])
 with f0: busca = st.text_input("Busca rápida", placeholder="Cidade, CEP, ECC, CD, localização ou transportador", key="txt_busca_main")
 with f1: geografia = filter_one_click("Geografia", "geografia_comercial", df_all, "main")
@@ -493,11 +484,11 @@ with st.container():
     f.metric("Realizado", f"{fmt_num(df['realizado_cliente'].mean(),1)}d")
 
 # =========================
-# ABAS ORIGINAIS RESTAURADAS (Executivo e SLA sugerido removidos)
+# OPERAÇÃO CORREGIDA DAS ABAS: "SLA Sugerido" removido, "Prazo x Realizado" mantido.
 # =========================
 tab1, tab2, tab3, tab4 = st.tabs([
     "🌎 Geografia",
-    "🎯 SLA sugerido & Ação",
+    "⏱️ Prazo x Realizado",
     "🚚 Transportador",
     "📍 CEP / Cidade"
 ])
@@ -512,26 +503,18 @@ with tab1:
     st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(200)), width="stretch")
 
 with tab2:
-    st.subheader("Ranking de SLA sugerido e redução de prazo")
-    dim_label = st.selectbox(
-        "Dimensão do SLA",
-        ["Geografia + Localização", "Geografia + Transportador", "Geografia + Cidade", "Localização + Transportador", "ECC + CDs", "CEP5", "CEP3", "Modal"],
-        key="sb_dimensao_tab3"
-    )
-    dim_map = {
-        "Geografia + Localização": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"],
-        "Geografia + Transportador": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "transportador (grupo)"],
-        "Geografia + Cidade": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cidade cliente"],
-        "Localização + Transportador": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"],
-        "ECC + CDs": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"],
-        "CEP5": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cep_prefixo5"],
-        "CEP3": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cep_prefixo3"],
-        "Modal": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"],
-    }
-    rank = agg_metrics(df, dim_map[dim_label])
-    rank = rank[rank["pedidos"] >= min_volume]
-    cols = [c for c in rank.columns if c in dim_map[dim_label] + ["pedidos", "% antecipado", "% no prazo", "% atrasado", "ns", "oportunidade", "media_ofertado", "media_realizado", "p80_realizado", "sla_sugerido_p80", "reducao_media_potencial", "score_prioridade", "classe_acao"]]
-    st.dataframe(style_table(rank[cols].head(200)), width="stretch")
+    st.subheader("Lead Time Histórico: Prazo Prometido Cliente x Realizado")
+    lead = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "prazo_cliente", "realizado_cliente"], dropna=False).agg(
+        pedidos=("pedido_gemco", "nunique"),
+        oportunidade=("oportunidade", "sum"),
+        antecipados=("aux_antecipado", "sum"),
+        no_prazo=("aux_no_prazo", "sum"),
+        atrasados=("aux_atrasado", "sum"),
+    ).reset_index()
+    lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
+    lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
+    
+    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(200)), width="stretch")
 
 with tab3:
     st.subheader("Negociação Completa por Transportador")
