@@ -229,30 +229,6 @@ def normalize_columns(df):
     out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
     return out
 
-def find_excel_file():
-    base = Path.cwd()
-    preferred = [
-        "MODALREALIZADO_Dadoscompletos_data(7).csv",
-        "MODAL_REALIZADO.csv",
-        "modal_realizado.csv",
-        "MODAL_REALIZADO.xlsx",
-        "modal_realizado.xlsx",
-        "dashboard_base_com_geografia.xlsx",
-        "dashboard_final_situacao_estilizado.xlsx",
-        "dashboard_final_situacao_ok.xlsx",
-        "dashboard_final_situacao_estilizado",
-    ]
-    for name in preferred:
-        p = base / name
-        if p.exists() and p.is_file():
-            return p
-
-    for pattern in ["*.csv", "*.xlsx", "*.xlsm", "*.xls"]:
-        files = [p for p in base.glob(pattern) if p.is_file()]
-        if files:
-            return files[0]
-    return None
-
 def read_csv_flexible(file_obj):
     tentativas = [
         {"sep": ";", "engine": "python", "encoding": "utf-8-sig", "quoting": csv.QUOTE_NONE},
@@ -271,24 +247,6 @@ def read_csv_flexible(file_obj):
         except Exception as e:
             ultimo_erro = e
     raise ultimo_erro
-
-@st.cache_data(show_spinner=False)
-def load_excel_path(path_str):
-    path = Path(path_str)
-    if path.suffix.lower() == ".csv":
-        return read_csv_flexible(path)
-    xls = pd.ExcelFile(path, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
-    sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
-    return pd.read_excel(path, sheet_name=sheet, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
-
-@st.cache_data(show_spinner=False)
-def load_excel_upload(uploaded):
-    name = getattr(uploaded, "name", "").lower()
-    if name.endswith(".csv"):
-        return read_csv_flexible(uploaded)
-    xls = pd.ExcelFile(uploaded)
-    sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
-    return pd.read_excel(uploaded, sheet_name=sheet)
 
 def prep_data(df):
     df = normalize_columns(df)
@@ -539,7 +497,6 @@ def style_table(df):
     return styler
 
 def format_dataframe_values(df):
-    """Formatação leve para a aba Base, sem Pandas Styler."""
     view = prepare_display(df)
     out = view.copy()
 
@@ -610,48 +567,24 @@ def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
         fig.update_yaxes(tickformat=".0%")
     return fig
 
-def line(df, x, y, title, color=None, height=420):
-    fig = px.line(
-        df, x=x, y=y, color=color, markers=True, title=title,
-        color_discrete_sequence=[BLUE, CYAN, GREEN, YELLOW, RED, BLUE_DARK]
-    )
-    fig.update_layout(
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font_color=PRIMARY,
-        title_font_color=PRIMARY,
-        height=height,
-        margin=dict(l=20, r=20, t=58, b=20),
-        legend_title_text="",
-    )
-    fig.update_xaxes(gridcolor="#E5EEF9")
-    fig.update_yaxes(gridcolor="#E5EEF9")
-    if isinstance(y, str) and (y.startswith("%") or y == "ns"):
-        fig.update_yaxes(tickformat=".0%")
-    return fig
+# =========================
+# LOAD - Conexão Segura com a Nuvem (GitHub Releases)
+# =========================
+@st.cache_data(show_spinner="Carregando dados operacionais... Aguarde.")
+def carregar_dados_da_nuvem(url):
+    return pd.read_csv(url, sep=";")
 
-# =========================
-# LOAD
-# =========================
-uploaded = st.file_uploader("Carregar planilha Modal Realizado", type=["csv", "xlsx", "xlsm", "xls"])
+LINK_DO_MEU_CSV = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.csv"
+
 try:
-    if uploaded is not None:
-        raw = load_excel_upload(uploaded)
-        source_name = uploaded.name
-    else:
-        excel_path = find_excel_file()
-        if excel_path is None:
-            st.error("Não encontrei a planilha Modal Realizado na pasta. Envie a base pelo botão acima.")
-            st.stop()
-        raw = load_excel_path(str(excel_path))
-        source_name = excel_path.name
+    raw = carregar_dados_da_nuvem(LINK_DO_MEU_CSV)
+    source_name = "modal_realizado.csv (GitHub Cloud)"
 except Exception as e:
-    st.error("Não consegui abrir a base Modal Realizado. Verifique se o arquivo está em CSV ou Excel válido.")
+    st.error("Não consegui conectar à base de dados na nuvem. Verifique se o link está correto.")
     st.code(str(e))
     st.stop()
 
 df_all = prep_data(raw)
-
 
 # =========================
 # HEADER
