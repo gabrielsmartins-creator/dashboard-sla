@@ -229,16 +229,35 @@ def normalize_columns(df):
     out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
     return out
 
+def read_csv_flexible(file_obj):
+    tentativas = [
+        {"sep": ";", "engine": "python", "encoding": "utf-8-sig", "quoting": csv.QUOTE_NONE},
+        {"sep": None, "engine": "python", "encoding": "utf-8-sig"},
+        {"sep": ";", "engine": "python", "encoding": "latin1", "quoting": csv.QUOTE_NONE},
+        {"sep": None, "engine": "python", "encoding": "latin1"},
+    ]
+    ultimo_erro = None
+    for params in tentativas:
+        try:
+            if hasattr(file_obj, "seek"):
+                file_obj.seek(0)
+            df = pd.read_csv(file_obj, **params)
+            if len(df.columns) > 1:
+                return df
+        except Exception as e:
+            ultimo_erro = e
+    raise ultimo_erro
+
 def prep_data(df):
     df = normalize_columns(df)
 
-    # Coerção numérica explícita otimizada para economizar memória RAM
+    # Numeric columns
     for c in ["prazo_cliente", "realizado_cliente", "oportunidade", "atraso_dias",
               "aux_antecipado", "aux_no_prazo", "aux_atrasado", "gap_prazo", "eficiencia_entrega"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # Normalização de modal
+    # Modal normalization
     if "modal" not in df.columns:
         if "modal transp" in df.columns:
             src = df["modal transp"].astype(str).str.upper()
@@ -265,6 +284,7 @@ def prep_data(df):
         })
     )
 
+    # Mandatory dimension columns
     defaults = {
         "geografia_comercial": "N/A",
         "uf cliente": "N/A",
@@ -286,6 +306,7 @@ def prep_data(df):
             df[col] = default
         df[col] = df[col].fillna(default).astype(str)
 
+    # CEP prefixes if missing
     if "cep_cliente" in df.columns:
         cep = df["cep_cliente"].astype(str).str.replace(r"\D", "", regex=True)
         if "cep_prefixo3" not in df.columns or (df["cep_prefixo3"] == "N/A").all():
@@ -293,6 +314,7 @@ def prep_data(df):
         if "cep_prefixo5" not in df.columns or (df["cep_prefixo5"] == "N/A").all():
             df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
 
+    # Month if missing
     if "mes" not in df.columns or (df["mes"] == "N/A").all():
         for date_col in ["data finalização", "data_libfat", "data entrega prevista cliente", "data_entrega_prevista"]:
             if date_col in df.columns:
@@ -474,6 +496,37 @@ def style_table(df):
 
     return styler
 
+def format_dataframe_values(df):
+    view = prepare_display(df)
+    out = view.copy()
+
+    pct_cols = [c for c in out.columns if str(c).startswith("%") or str(c).lower() == "ns"]
+    id_cols = {"Pedido", "CD faturamento", "CD Faturamento", "CD responsável", "CD Responsável", "CEP", "CEP3", "CEP5"}
+
+    def is_integer_like(series):
+        s = pd.to_numeric(series, errors="coerce").dropna()
+        if s.empty:
+            return False
+        return np.all(np.isclose(s, np.round(s)))
+
+    for c in out.columns:
+        if c in pct_cols:
+            out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                lambda x: "" if pd.isna(x) else f"{x:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        elif pd.api.types.is_numeric_dtype(out[c]):
+            if c in id_cols:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.0f}")
+            elif is_integer_like(out[c]):
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                    lambda x: "" if pd.isna(x) else f"{x:,.0f}".replace(",", ".")
+                )
+            else:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                    lambda x: "" if pd.isna(x) else f"{x:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+    return out
+
 def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
     fig = px.bar(
         df,
@@ -515,20 +568,16 @@ def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
     return fig
 
 # =========================
-# LOAD - OTIMIZADO CONTRA ESTOURO DE MEMÓRIA (Múltiplos usuários)
+# LOAD - Conexão Segura com a Nuvem (GitHub Releases)
 # =========================
-@st.cache_data(show_spinner="Carregando dados operacionais em nuvem... Aguarde.")
-def carregar_dados_da_nuvem_com_baixa_ram(url):
-    # Lendo o arquivo em blocos pequenos (chunks) para não estourar o limite de 1 GB de RAM do Streamlit
-    lista_blocos = []
-    for bloco in pd.read_csv(url, sep=";", chunksize=50000, low_memory=False):
-        lista_blocos.append(bloco)
-    return pd.concat(lista_blocos, ignore_index=True)
+@st.cache_data(show_spinner="Carregando dados operacionais... Aguarde.")
+def carregar_dados_da_nuvem(url):
+    return pd.read_csv(url, sep=";")
 
 LINK_DO_MEU_CSV = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.csv"
 
 try:
-    raw = carregar_dados_da_nuvem_com_baixa_ram(LINK_DO_MEU_CSV)
+    raw = carregar_dados_da_nuvem(LINK_DO_MEU_CSV)
     source_name = "modal_realizado.csv (GitHub Cloud)"
 except Exception as e:
     st.error("Não consegui conectar à base de dados na nuvem. Verifique se o link está correto.")
@@ -599,7 +648,7 @@ min_volume = st.slider("Volume mínimo para rankings", 1, 1000, 50, step=10, key
 
 df = df_all.copy()
 for col, val in [
-    ("geografia_comercial", geography),
+    ("geografia_comercial", geografia),
     ("modal", modal),
     ("uf cliente", uf),
     ("situacao", situacao),
