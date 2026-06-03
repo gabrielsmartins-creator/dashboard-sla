@@ -57,16 +57,8 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     box-shadow: 0 18px 38px rgba(7,27,69,.22);
     margin-bottom: 22px;
 }
-.top-title {
-    font-size: 2.15rem;
-    font-weight: 950;
-    line-height: 1.2;
-}
-.top-subtitle {
-    color: #D9E6FF;
-    font-size: .98rem;
-    margin-top: 10px;
-}
+.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.2; }
+.top-subtitle { color: #D9E6FF; font-size: .98rem; margin-top: 10px; }
 .badge {
     display: inline-block;
     background: rgba(255,255,255,.14);
@@ -78,88 +70,11 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     font-size: .82rem;
     margin-right: 8px;
 }
-
-[data-testid="stMetricValue"] {
-    font-size: 2rem !important;
-    font-weight: 950 !important;
-    color: #071B45 !important;
-}
-[data-testid="stMetricLabel"] {
-    color: #667085 !important;
-    font-size: .78rem !important;
-    font-weight: 900 !important;
-    text-transform: uppercase !important;
-    letter-spacing: .055rem !important;
-}
-[data-testid="stMetric"] {
-    background: #FFFFFF;
-    border: 1px solid #D7E6FA;
-    border-radius: 22px;
-    padding: 14px 18px !important;
-    box-shadow: 0 10px 24px rgba(11,58,117,.08);
-}
-
-.insight-card {
-    background: linear-gradient(90deg, #EAF2FF 0%, #FFFFFF 100%);
-    border-left: 7px solid #155EEF;
-    border-radius: 18px;
-    padding: 16px 18px;
-    margin: 10px 0 18px 0;
-    box-shadow: 0 6px 18px rgba(11,58,117,.06);
-}
-[data-testid="stTabs"] {
-    margin-top: 8px;
-}
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 10px;
-    border-bottom: 0 !important;
-    align-items: center;
-    background: transparent;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
-    height: 38px;
-    min-height: 38px;
-    padding: 0 18px;
-    border-radius: 10px 10px 0 0;
-    border: 1px solid #D7E6FA;
-    border-bottom: 0;
-    background: #FFFFFF;
-    color: #667085;
-    font-weight: 900;
-    box-shadow: 0 6px 16px rgba(11,58,117,.06);
-    transition: all .18s ease-in-out;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] p {
-    color: inherit !important;
-    font-weight: 900 !important;
-    font-size: .88rem;
-}
-[data-testid="stTabs"] [data-baseweb="tab"]:hover {
-    background: #EAF2FF;
-    color: #0B3A75;
-    border-color: #9EC5FE;
-}
-[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%) !important;
-    color: #FFFFFF !important;
-    border-color: #155EEF !important;
-    box-shadow: 0 10px 24px rgba(21,94,239,.22);
-}
-[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] p {
-    color: #FFFFFF !important;
-}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-    display: none;
-}
-[data-testid="stDataFrame"] {
-    border: 1px solid #D7E6FA;
-    border-radius: 16px;
-    overflow: hidden;
-}
-.stSelectbox label, .stTextInput label, .stSlider label {
-    color: #071B45 !important;
-    font-weight: 800 !important;
-}
+[data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 950 !important; color: #071B45 !important; }
+[data-testid="stMetricLabel"] { color: #667085 !important; font-size: .78rem !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .055rem !important; }
+[data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
+[data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
+.stSelectbox label, .stTextInput label, .stSlider label { color: #071B45 !important; font-weight: 800 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -167,44 +82,17 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
 # UTILITIES
 # =========================
 DISPLAY_NAMES = {
-    "modal": "Modal",
-    "geografia_comercial": "Geografia",
-    "uf cliente": "UF",
-    "cidade cliente": "Cidade",
-    "localizacao_comercial": "Localização comercial",
-    "ecc": "ECC",
-    "cd faturamento": "CD faturamento",
-    "cd responsavel": "CD responsável",
-    "transportador (grupo)": "Transportador (grupo)",
-    "transportador": "Transportador",
-    "situacao": "Situação",
-    "pedido_gemco": "Pedido",
-    "pedidos": "Pedidos",
-    "antecipados": "Antecipados",
-    "no_prazo": "No prazo",
-    "atrasados": "Atrasados",
-    "oportunidade": "Oportunidade",
-    "atraso_total": "Atraso total",
-    "media_ofertado": "Média ofertada",
-    "media_realizado": "Média realizada",
-    "p80_realizado": "P80 realizado",
-    "mediana_realizado": "Mediana realizada",
-    "oportunidade_media": "Oportunidade média",
-    "gap_medio": "Gap médio",
-    "eficiencia_media": "Efência média",
-    "sla_sugerido_p80": "SLA sugerido P80",
-    "reducao_media_potencial": "Redução média potencial",
-    "score_prioridade": "Score prioridade",
-    "classe_acao": "Classe ação",
-    "cep_cliente": "CEP",
-    "cep_prefixo3": "CEP3",
-    "cep_prefixo5": "CEP5",
-    "prazo_cliente": "Prazo cliente",
-    "realizado_cliente": "Realizado cliente",
-    "% antecipado": "% antecipado",
-    "% no prazo": "% no prazo",
-    "% atrasado": "% atrasado",
-    "ns": "NS"
+    "modal": "Modal", "geografia_comercial": "Geografia", "uf cliente": "UF", "cidade cliente": "Cidade",
+    "localizacao_comercial": "Localização comercial", "ecc": "ECC", "cd faturamento": "CD faturamento",
+    "cd responsavel": "CD responsável", "transportador (grupo)": "Transportador (grupo)", "transportador": "Transportador",
+    "situacao": "Situação", "pedido_gemco": "Pedido", "pedidos": "Pedidos", "antecipados": "Antecipados",
+    "no_prazo": "No prazo", "atrasados": "Atrasados", "oportunidade": "Oportunidade", "atraso_total": "Atraso total",
+    "media_ofertado": "Média ofertada", "media_realizado": "Média realizada", "p80_realizado": "P80 realizado",
+    "mediana_realizado": "Mediana realizada", "oportunidade_media": "Oportunidade média", "gap_medio": "Gap médio",
+    "eficiencia_media": "Efência média", "sla_sugerido_p80": "SLA sugerido P80", "reducao_media_potencial": "Redução média potencial",
+    "score_prioridade": "Score prioridade", "classe_acao": "Classe ação", "cep_cliente": "CEP", "cep_prefixo3": "CEP3",
+    "cep_prefixo5": "CEP5", "prazo_cliente": "Prazo cliente", "realizado_cliente": "Realizado cliente",
+    "% antecipado": "% antecipado", "% no prazo": "% no prazo", "% atrasado": "% atrasado", "ns": "NS"
 }
 
 def fmt_num(x, dec=0):
@@ -221,94 +109,22 @@ def fmt_pct(x):
         return f"{value:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
     except Exception: return str(x)
 
-def normalize_columns(df):
-    out = df.copy()
-    out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
-    return out
-
 # =========================
-# CARREGAMENTO GLOBAL COMPARTILHADO (EVITA MULTIPLICAÇÃO DE RAM POR ABA)
+# CARREGAMENTO PARQUET DA NUVEM EM HIGH PERFORMANCE
 # =========================
-@st.cache_resource(ttl=86400, show_spinner="Inicializando base de dados global na nuvem... Por favor, aguarde alguns segundos.")
-def carregar_dados_globais_compartilhados(url):
-    tipos_colunas = {
-        'geografia_comercial': 'category', 'modal': 'category', 'modal transp': 'category',
-        'uf cliente': 'category', 'situacao': 'category', 'ecc': 'category',
-        'cd faturamento': 'category', 'cd responsavel': 'category',
-        'localizacao_comercial': 'category', 'transportador (grupo)': 'category',
-        'transportador': 'category', 'cidade cliente': 'category', 'cep_cliente': 'str'
-    }
-    
-    lista_blocos = []
-    # Processa o arquivo em chunks pequenos para blindar o motor do Pandas
-    for bloco in pd.read_csv(url, sep=";", chunksize=45000, dtype=tipos_colunas, low_memory=False):
-        bloco.columns = [str(c).strip().strip('"').strip().lower() for c in bloco.columns]
-        colunas_uteis = [c for c in bloco.columns if c in [
-            'geografia_comercial', 'modal', 'modal transp', 'uf cliente', 'cidade cliente',
-            'localizacao_comercial', 'ecc', 'cd faturamento', 'cd responsavel',
-            'transportador (grupo)', 'transportador', 'situacao', 'pedido_gemco', 'prazo_cliente', 'realizado_cliente', 'cep_cliente'
-        ]]
-        lista_blocos.append(bloco[colunas_uteis])
-        
-    df = pd.concat(lista_blocos, ignore_index=True)
-    
-    for c in ["prazo_cliente", "realizado_cliente"]:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(np.int8)
-    return df
+@st.cache_data(show_spinner="Carregando malha de dados ultra compactada... Aguarde.")
+def carregar_dados_parquet(url):
+    # Lê o arquivo Parquet hospedado no link de forma instantânea consumindo pouca RAM
+    return pd.read_parquet(url)
 
-LINK_DO_MEU_CSV = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.csv"
+LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.parquet"
 
 try:
-    raw = carregar_dados_globais_compartilhados(LINK_DO_MEU_CSV)
-    source_name = "modal_realizado.csv (GitHub Cloud)"
+    df_all = carregar_dados_parquet(LINK_DO_MEU_PARQUET)
 except Exception as e:
-    st.error("Erro crítico de conexão com a base de dados central.")
+    st.error("Não consegui conectar ao banco de dados Parquet na nuvem. Verifique o link nos lançamentos.")
     st.code(str(e))
     st.stop()
-
-# =========================
-# TRATAMENTO DE ENGENHARIA DE ATRIBUTOS
-# =========================
-@st.cache_data(show_spinner=False)
-def processar_malha_operacional(df_raw):
-    df = df_raw.copy()
-    if "modal" not in df.columns and "modal transp" in df.columns:
-        src = df["modal transp"].astype(str).str.upper()
-        df["modal"] = np.select(
-            [src.str.contains("COURIER|COURRIER", na=False), src.str.contains("RODO", na=False), src.str.contains("MICRO", na=False)],
-            ["COURIER", "RODO", "MICRO"], default="OUTROS"
-        )
-    df["modal"] = df["modal"].astype(str).str.upper().str.strip().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
-
-    defaults = {
-        "geografia_comercial": "N/A", "uf cliente": "N/A", "cidade cliente": "N/A", "localizacao_comercial": "N/A",
-        "ecc": "N/A", "cd faturamento": "N/A", "cd responsavel": "N/A", "transportador (grupo)": "N/A",
-        "transportador": "N/A", "situacao": "N/A", "cep_cliente": "N/A", "cep_prefixo3": "N/A", "cep_prefixo5": "N/A"
-    }
-    for col, default in defaults.items():
-        if col not in df.columns: df[col] = default
-        df[col] = df[col].fillna(default).astype(str)
-
-    if "cep_cliente" in df.columns:
-        cep = df["cep_cliente"].str.replace(r"\D", "", regex=True)
-        df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
-        df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
-
-    if "pedido_gemco" not in df.columns:
-        df["pedido_gemco"] = np.arange(len(df)) + 1
-
-    df["aux_antecipado"] = (df["realizado_cliente"] < df["prazo_cliente"]).astype(np.int8)
-    df["aux_no_prazo"] = (df["realizado_cliente"] == df["prazo_cliente"]).astype(np.int8)
-    df["aux_atrasado"] = (df["realizado_cliente"] > df["prazo_cliente"]).astype(np.int8)
-    
-    df["oportunidade"] = (df["prazo_cliente"] - df["realizado_cliente"]).clip(lower=0)
-    df["atraso_dias"] = (df["realizado_cliente"] - df["prazo_cliente"]).clip(lower=0)
-    df["gap_prazo"] = df["prazo_cliente"] - df["realizado_cliente"]
-    df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
-    return df
-
-df_all = processar_malha_operacional(raw)
 
 # =========================
 # FILTROS DINÂMICOS
@@ -333,7 +149,7 @@ def apply_prazo_ate_filter(df, col, value):
     return df[df[col] <= limite]
 
 # =========================
-# AGREGAÇÕES DE PERFORMANCE
+# AGREGAÇÕES DE ALTA PERFORMANCE
 # =========================
 def agg_metrics(df, group_cols):
     g = df.groupby(group_cols, dropna=False).agg(
@@ -390,7 +206,6 @@ def style_table(df):
     styler = view.style.format(fmt, decimal=",", thousands=".")
     for c in pct_cols:
         if c in view.columns: styler = styler.map(lambda v: "background-color: #D1FADF; color: #027A48; font-weight: 900" if float(v) >= 99 else "background-color: #EAF2FF; color: #155EEF; font-weight: 800" if float(v) >= 95 else "background-color: #FEF0C7; color: #B54708; font-weight: 800" if float(v) >= 85 else "background-color: #FEE4E2; color: #B42318; font-weight: 800", subset=[c])
-        
     if "Classe ação" in view.columns:
         styler = styler.map(lambda v: "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else "", subset=["Classe ação"])
     return styler
@@ -405,9 +220,9 @@ st.markdown(f"""
             <div class="top-title">Last Mile SLA Intelligence</div>
             <div class="top-subtitle">Painel operacional para redução de prazo cliente por Geografia, Modal, ECC, CDs, Localização, Transportador, Cidade e CEP.</div>
             <div style="margin-top:14px">
-                <span class="badge">Fonte: {source_name}</span>
+                <span class="badge">Fonte: modal_realizado.parquet (GitHub Releases Cloud)</span>
                 <span class="badge">NS = Antecipado + No Prazo</span>
-                <span class="badge">Foco: dados globais otimizados anti-crash</span>
+                <span class="badge">Ambiente Estabilizado Corporativo</span>
             </div>
         </div>
         <div><img src="data:image/png;base64,{image_to_base64(LOGO_PATH)}" style="max-height:58px; max-width:190px; object-fit:contain;" /></div>
@@ -415,7 +230,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Filtros operacionais completos reestabelecidos
 f0, f1, f2, f3, f4 = st.columns([1.4, 1, 1, 1, 1])
 with f0: busca = st.text_input("Busca rápida", placeholder="Cidade, CEP, ECC, CD, localização ou transportador", key="txt_busca_main")
 with f1: geografia = filter_one_click("Geografia", "geografia_comercial", df_all, "main")
@@ -480,7 +294,7 @@ with st.container():
     f.metric("Realizado", f"{fmt_num(df['realizado_cliente'].mean(),1)}d")
 
 # =========================
-# AS 4 ABAS SOLICITADAS TOTALMENTE COMPLETA E DETALHADA
+# AS 4 ABAS ORIGINAIS RESTAURADAS E COMPLETAS
 # =========================
 tab1, tab2, tab3, tab4 = st.tabs([
     "🌎 Geografia",
@@ -509,7 +323,6 @@ with tab2:
     ).reset_index()
     lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
-    
     st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(250)), width="stretch")
 
 with tab3:
@@ -519,9 +332,4 @@ with tab3:
 
 with tab4:
     st.subheader("Análise de Malhas por Cidade")
-    cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
-    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(250)), width="stretch")
-
-    st.subheader("Análise de Micro-região (Top CEP5 e CEP3)")
-    cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
-    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(250)), width="stretch")
+    cidade_df = agg_metrics(df,
