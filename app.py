@@ -6,8 +6,6 @@ import numpy as np
 import plotly.express as px
 from pathlib import Path
 
-
-
 st.set_page_config(
     page_title="Last Mile SLA Intelligence",
     page_icon="🚚",
@@ -766,7 +764,7 @@ a,b,c,d,e,f = st.columns(6)
 with a: kpi("Pedidos", fmt_num(pedidos), "Pedidos únicos filtrados", "blue")
 with b: kpi("NS geral", fmt_pct(ns), "Antecipado + no prazo", "good" if ns >= .95 else "bad" if ns < .85 else "blue")
 with c: kpi("% antecipado", fmt_pct(pct_ant), "Principal alavanca de redução", "good" if pct_ant >= .70 else "blue")
-with d: kpi("% atraso", fmt_pct(pct_atr), "Risco operacional", "bad" if pct_atr >= .10 else "good")
+with d: kpi("% atraso", fmt_pct(pct_atr), "Risco operational", "bad" if pct_atr >= .10 else "good")
 with e: kpi("Prazo ofertado", f"{fmt_num(prazo_m,1)}d", "Média cliente", "blue")
 with f: kpi("Realizado", f"{fmt_num(real_m,1)}d", "Média real", "blue")
 
@@ -806,7 +804,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 with tab1:
     c1, c2 = st.columns([1.1, 1])
     with c1:
-        top = rank_loc.head(15)
+        top = rank_loc.head(100) # AJUSTE 3: Reduzido de .head(15) ou similar para focar no novo limite máximo
         if not top.empty:
             st.plotly_chart(
                 bar(top.sort_values("oportunidade"), "oportunidade", "localizacao_comercial",
@@ -832,7 +830,8 @@ with tab1:
         st.plotly_chart(fig, width="stretch")
 
         modal_rank = agg_metrics(df, ["modal", "ecc", "cd faturamento", "cd responsavel"])
-        st.dataframe(style_table(modal_rank[["modal","pedidos","% antecipado","% no prazo","% atrasado","ns","oportunidade","media_ofertado","media_realizado","classe_acao"]]), width="stretch")
+        # AJUSTE 2: Trocado temporariamente style_table por prepare_display para evitar o Pandas Styler pesado
+        st.dataframe(prepare_display(modal_rank[["modal","pedidos","% antecipado","% no prazo","% atrasado","ns","oportunidade","media_ofertado","media_realizado","classe_acao"]]), width="stretch")
 
     periodo_df = agg_metrics(df, ["mes", "modal"])
     if not periodo_df.empty:
@@ -842,19 +841,22 @@ with tab2:
     st.subheader("Análise por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
     geo = geo[geo["pedidos"] >= min_volume]
-    st.dataframe(style_table(geo.head(200)), width="stretch")
+    # AJUSTE 2: Substituído por prepare_display para aliviar a renderização
+    # AJUSTE 3: Reduzido de .head(200) para .head(100)
+    st.dataframe(prepare_display(geo.head(100)), width="stretch")
     c1, c2 = st.columns(2)
     with c1:
-        st.plotly_chart(bar(geo.head(20).sort_values("ns"), "ns", "geografia_comercial",
+        st.plotly_chart(bar(geo.head(100).sort_values("ns"), "ns", "geografia_comercial",
                             "NS por Geografia", color="modal", orientation="h", height=600), width="stretch")
     with c2:
-        st.plotly_chart(bar(geo.head(20).sort_values("oportunidade"), "oportunidade", "geografia_comercial",
+        st.plotly_chart(bar(geo.head(100).sort_values("oportunidade"), "oportunidade", "geografia_comercial",
                             "Oportunidade por Geografia", color="modal", orientation="h", height=600), width="stretch")
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
     gl = gl[gl["pedidos"] >= min_volume]
-    st.dataframe(style_table(gl.head(250)), width="stretch")
+    # AJUSTE 2 e 3: prepare_display aplicado e head reduzido de 250 para 100
+    st.dataframe(prepare_display(gl.head(100)), width="stretch")
 
 with tab3:
     st.subheader("Ranking de SLA sugerido e redução de prazo")
@@ -875,11 +877,12 @@ with tab3:
     rank = agg_metrics(df, dim_map[dim_label])
     rank = rank[rank["pedidos"] >= min_volume]
     cols = [c for c in rank.columns if c in dim_map[dim_label] + ["pedidos", "% antecipado", "% no prazo", "% atrasado", "ns", "oportunidade", "media_ofertado", "media_realizado", "p80_realizado", "sla_sugerido_p80", "reducao_media_potencial", "score_prioridade", "classe_acao"]]
-    st.dataframe(style_table(rank[cols].head(300)), width="stretch")
+    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
+    st.dataframe(prepare_display(rank[cols].head(100)), width="stretch")
 
     if not rank.empty:
         first_dim = dim_map[dim_label][-1]
-        st.plotly_chart(bar(rank.head(25).sort_values("score_prioridade"), "score_prioridade", first_dim,
+        st.plotly_chart(bar(rank.head(100).sort_values("score_prioridade"), "score_prioridade", first_dim,
                             "Score de prioridade para redução", color="classe_acao", orientation="h", height=720),
                         width="stretch")
 
@@ -900,7 +903,8 @@ with tab4:
     fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=560, margin=dict(l=20,r=20,t=60,b=20))
     st.plotly_chart(fig, width="stretch")
 
-    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(300)), width="stretch")
+    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
+    st.dataframe(prepare_display(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(100)), width="stretch")
 
     oferta = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "prazo_cliente"], dropna=False).agg(
         pedidos=("pedido_gemco", "nunique"),
@@ -912,7 +916,7 @@ with tab4:
     ).reset_index()
     oferta["% antecipado"] = oferta["antecipados"] / oferta["pedidos"].replace(0, np.nan)
     oferta["ns"] = (oferta["antecipados"] + oferta["no_prazo"]) / oferta["pedidos"].replace(0, np.nan)
-    st.plotly_chart(bar(oferta.sort_values("pedidos").tail(20), "pedidos", "prazo_cliente",
+    st.plotly_chart(bar(oferta.sort_values("pedidos").tail(100), "pedidos", "prazo_cliente",
                         "Volume por prazo ofertado", color="modal", orientation="h", height=540),
                     width="stretch")
 
@@ -920,9 +924,10 @@ with tab5:
     st.subheader("Negociação por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"])
     lt = lt[lt["pedidos"] >= min_volume]
-    st.dataframe(style_table(lt.head(300)), width="stretch")
+    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
+    st.dataframe(prepare_display(lt.head(100)), width="stretch")
     if not lt.empty:
-        st.plotly_chart(bar(lt.head(25).sort_values("oportunidade"), "oportunidade", "transportador (grupo)",
+        st.plotly_chart(bar(lt.head(100).sort_values("oportunidade"), "oportunidade", "transportador (grupo)",
                             "Oportunidade por Transportador (grupo)", color="classe_acao", orientation="h", height=720),
                         width="stretch")
 
@@ -951,17 +956,19 @@ with tab6:
     st.subheader("Cidade e CEP")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
     cidade_df = cidade_df[cidade_df["pedidos"] >= min_volume]
-    st.dataframe(style_table(cidade_df.head(250)), width="stretch")
+    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(250) para .head(100)
+    st.dataframe(prepare_display(cidade_df.head(100)), width="stretch")
     if not cidade_df.empty:
-        st.plotly_chart(bar(cidade_df.head(25).sort_values("score_prioridade"), "score_prioridade", "cidade cliente",
+        st.plotly_chart(bar(cidade_df.head(100).sort_values("score_prioridade"), "score_prioridade", "cidade cliente",
                             "Prioridade por Cidade", color="classe_acao", orientation="h", height=720), width="stretch")
 
     cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
     cep5 = cep5[cep5["pedidos"] >= max(5, min_volume // 3)]
     st.subheader("Top CEP5")
-    st.dataframe(style_table(cep5.head(300)), width="stretch")
+    # AJUSTE 2 e 3: Troca para prepare_display e redução de .head(300) para .head(100)
+    st.dataframe(prepare_display(cep5.head(100)), width="stretch")
     if not cep5.empty:
-        st.plotly_chart(bar(cep5.head(30).sort_values("oportunidade"), "oportunidade", "cep_prefixo5",
+        st.plotly_chart(bar(cep5.head(100).sort_values("oportunidade"), "oportunidade", "cep_prefixo5",
                             "Top CEP5 por oportunidade", color="classe_acao", orientation="h", height=760),
                         width="stretch")
 
@@ -975,7 +982,10 @@ with tab6:
 with tab7:
     st.subheader("Base filtrada")
     st.caption("A base abaixo já respeita todos os filtros aplicados no topo.")
-    st.dataframe(format_dataframe_values(df), width="stretch")
+    
+    # AJUSTE 1: Filtrado para mostrar apenas as primeiras 3000 linhas via df.head(3000)
+    st.dataframe(format_dataframe_values(df.head(3000)), width="stretch")
+    
     st.download_button(
         "Baixar base filtrada em CSV",
         df.to_csv(index=False).encode("utf-8-sig"),
