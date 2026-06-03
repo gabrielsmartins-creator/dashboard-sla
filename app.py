@@ -229,19 +229,25 @@ def normalize_columns(df):
     out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
     return out
 
-def find_data_file():
+def find_excel_file():
     base = Path.cwd()
     preferred = [
-        "modal_realizado.parquet",
-        "modal_realizado.csv",
+        "MODALREALIZADO_Dadoscompletos_data(7).csv",
         "MODAL_REALIZADO.csv",
+        "modal_realizado.csv",
+        "MODAL_REALIZADO.xlsx",
+        "modal_realizado.xlsx",
+        "dashboard_base_com_geografia.xlsx",
+        "dashboard_final_situacao_estilizado.xlsx",
+        "dashboard_final_situacao_ok.xlsx",
+        "dashboard_final_situacao_estilizado",
     ]
     for name in preferred:
         p = base / name
         if p.exists() and p.is_file():
             return p
 
-    for pattern in ["*.parquet", "*.csv", "*.xlsx"]:
+    for pattern in ["*.csv", "*.xlsx", "*.xlsm", "*.xls"]:
         files = [p for p in base.glob(pattern) if p.is_file()]
         if files:
             return files[0]
@@ -267,15 +273,22 @@ def read_csv_flexible(file_obj):
     raise ultimo_erro
 
 @st.cache_data(show_spinner=False)
-def load_data_path(path_str):
+def load_excel_path(path_str):
     path = Path(path_str)
-    if path.suffix.lower() == ".parquet":
-        return pd.read_parquet(path)
     if path.suffix.lower() == ".csv":
         return read_csv_flexible(path)
     xls = pd.ExcelFile(path, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
     sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
     return pd.read_excel(path, sheet_name=sheet, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
+
+@st.cache_data(show_spinner=False)
+def load_excel_upload(uploaded):
+    name = getattr(uploaded, "name", "").lower()
+    if name.endswith(".csv"):
+        return read_csv_flexible(uploaded)
+    xls = pd.ExcelFile(uploaded)
+    sheet = "Base_Filtrada" if "Base_Filtrada" in xls.sheet_names else xls.sheet_names[0]
+    return pd.read_excel(uploaded, sheet_name=sheet)
 
 def prep_data(df):
     df = normalize_columns(df)
@@ -409,6 +422,59 @@ def apply_prazo_ate_filter(df, col, value):
     valores = pd.to_numeric(df[col], errors="coerce")
     return df[valores <= limite]
 
+def agg_metrics(df, group_cols):
+    if isinstance(group_cols, str):
+        group_cols = [group_cols]
+
+    g = df.groupby(group_cols, dropna=False).agg(
+        pedidos=("pedido_gemco", "nunique"),
+        antecipados=("aux_antecipado", "sum"),
+        no_prazo=("aux_no_prazo", "sum"),
+        atrasados=("aux_atrasado", "sum"),
+        oportunidade=("oportunidade", "sum"),
+        atraso_total=("atraso_dias", "sum"),
+        media_ofertado=("prazo_cliente", "mean"),
+        media_realizado=("realizado_cliente", "mean"),
+        p80_realizado=("realizado_cliente", lambda x: np.nanpercentile(x.dropna(), 80) if len(x.dropna()) else np.nan),
+        mediana_realizado=("realizado_cliente", "median"),
+        oportunidade_media=("oportunidade", "mean"),
+        gap_medio=("gap_prazo", "mean"),
+        eficiencia_media=("eficiencia_entrega", "mean"),
+    ).reset_index()
+
+    g["% antecipado"] = g["antecipados"] / g["pedidos"].replace(0, np.nan)
+    g["% no prazo"] = g["no_prazo"] / g["pedidos"].replace(0, np.nan)
+    g["% atrasado"] = g["atrasados"] / g["pedidos"].replace(0, np.nan)
+    g["ns"] = (g["antecipados"] + g["no_prazo"]) / g["pedidos"].replace(0, np.nan)
+    g["sla_sugerido_p80"] = np.ceil(g["p80_realizado"]).clip(lower=1)
+    g["reducao_media_potencial"] = (g["media_ofertado"] - g["sla_sugerido_p80"]).clip(lower=0)
+    g["score_prioridade"] = (
+        g["% antecipado"].fillna(0) * 35 +
+        g["ns"].fillna(0) * 25 +
+        np.log1p(g["oportunidade"].fillna(0)) * 8 +
+        g["reducao_media_potencial"].fillna(0) * 16 -
+        g["% atrasado"].fillna(0) * 25
+    )
+    g["classe_acao"] = np.select(
+        [
+            (g["pedidos"] >= 100) & (g["% antecipado"] >= .85) & (g["ns"] >= .95),
+            (g["pedidos"] >= 100) & (g["% antecipado"] >= .70) & (g["reducao_media_potencial"] >= 2),
+            (g["pedidos"] >= 50) & (g["ns"] >= .95) & (g["reducao_media_potencial"] >= 1),
+            (g["% atrasado"] >= .12),
+        ],
+        ["Redução agressiva", "Atacar agora", "Testar redução", "Risco operacional"],
+        default="Monitorar",
+    )
+    return g.sort_values(["score_prioridade", "oportunidade"], ascending=False)
+
+def prepare_display(df):
+    out = df.copy()
+    out = out.rename(columns={c: DISPLAY_NAMES.get(c, c) for c in out.columns})
+    for c in out.columns:
+        if str(c).startswith("%") or str(c).lower() == "ns" or "eficiência" in str(c).lower():
+            out[c] = pd.to_numeric(out[c], errors="coerce") * 100
+    return out
+
 def style_table(df):
     view = prepare_display(df)
 
@@ -473,6 +539,7 @@ def style_table(df):
     return styler
 
 def format_dataframe_values(df):
+    """Formatação leve para a aba Base, sem Pandas Styler."""
     view = prepare_display(df)
     out = view.copy()
 
@@ -543,18 +610,48 @@ def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
         fig.update_yaxes(tickformat=".0%")
     return fig
 
+def line(df, x, y, title, color=None, height=420):
+    fig = px.line(
+        df, x=x, y=y, color=color, markers=True, title=title,
+        color_discrete_sequence=[BLUE, CYAN, GREEN, YELLOW, RED, BLUE_DARK]
+    )
+    fig.update_layout(
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        font_color=PRIMARY,
+        title_font_color=PRIMARY,
+        height=height,
+        margin=dict(l=20, r=20, t=58, b=20),
+        legend_title_text="",
+    )
+    fig.update_xaxes(gridcolor="#E5EEF9")
+    fig.update_yaxes(gridcolor="#E5EEF9")
+    if isinstance(y, str) and (y.startswith("%") or y == "ns"):
+        fig.update_yaxes(tickformat=".0%")
+    return fig
+
 # =========================
-# LOAD - Otimizado para suportar Parquet Compactado
+# LOAD
 # =========================
-data_path = find_data_file()
-if data_path is None:
-    st.error("Não encontrei nenhuma planilha de dados (como modal_realizado.parquet) no repositório.")
+uploaded = st.file_uploader("Carregar planilha Modal Realizado", type=["csv", "xlsx", "xlsm", "xls"])
+try:
+    if uploaded is not None:
+        raw = load_excel_upload(uploaded)
+        source_name = uploaded.name
+    else:
+        excel_path = find_excel_file()
+        if excel_path is None:
+            st.error("Não encontrei a planilha Modal Realizado na pasta. Envie a base pelo botão acima.")
+            st.stop()
+        raw = load_excel_path(str(excel_path))
+        source_name = excel_path.name
+except Exception as e:
+    st.error("Não consegui abrir a base Modal Realizado. Verifique se o arquivo está em CSV ou Excel válido.")
+    st.code(str(e))
     st.stop()
 
-raw = load_data_path(str(data_path))
-source_name = data_path.name
-
 df_all = prep_data(raw)
+
 
 # =========================
 # HEADER
