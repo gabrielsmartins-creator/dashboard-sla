@@ -229,25 +229,19 @@ def normalize_columns(df):
     out.columns = [str(c).strip().strip('"').strip().lower() for c in out.columns]
     return out
 
-def find_excel_file():
+def find_data_file():
     base = Path.cwd()
     preferred = [
+        "modal_realizado.parquet",
         "modal_realizado.csv",
-        "MODALREALIZADO_Dadoscompletos_data(7).csv",
         "MODAL_REALIZADO.csv",
-        "MODAL_REALIZADO.xlsx",
-        "modal_realizado.xlsx",
-        "dashboard_base_com_geografia.xlsx",
-        "dashboard_final_situacao_estilizado.xlsx",
-        "dashboard_final_situacao_ok.xlsx",
-        "dashboard_final_situacao_estilizado",
     ]
     for name in preferred:
         p = base / name
         if p.exists() and p.is_file():
             return p
 
-    for pattern in ["*.csv", "*.xlsx", "*.xlsm", "*.xls"]:
+    for pattern in ["*.parquet", "*.csv", "*.xlsx"]:
         files = [p for p in base.glob(pattern) if p.is_file()]
         if files:
             return files[0]
@@ -273,8 +267,10 @@ def read_csv_flexible(file_obj):
     raise ultimo_erro
 
 @st.cache_data(show_spinner=False)
-def load_excel_path(path_str):
+def load_data_path(path_str):
     path = Path(path_str)
+    if path.suffix.lower() == ".parquet":
+        return pd.read_parquet(path)
     if path.suffix.lower() == ".csv":
         return read_csv_flexible(path)
     xls = pd.ExcelFile(path, engine="openpyxl" if path.suffix.lower() in [".xlsx", ".xlsm", ""] else None)
@@ -476,6 +472,37 @@ def style_table(df):
 
     return styler
 
+def format_dataframe_values(df):
+    view = prepare_display(df)
+    out = view.copy()
+
+    pct_cols = [c for c in out.columns if str(c).startswith("%") or str(c).lower() == "ns"]
+    id_cols = {"Pedido", "CD faturamento", "CD Faturamento", "CD responsável", "CD Responsável", "CEP", "CEP3", "CEP5"}
+
+    def is_integer_like(series):
+        s = pd.to_numeric(series, errors="coerce").dropna()
+        if s.empty:
+            return False
+        return np.all(np.isclose(s, np.round(s)))
+
+    for c in out.columns:
+        if c in pct_cols:
+            out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                lambda x: "" if pd.isna(x) else f"{x:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        elif pd.api.types.is_numeric_dtype(out[c]):
+            if c in id_cols:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.0f}")
+            elif is_integer_like(out[c]):
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                    lambda x: "" if pd.isna(x) else f"{x:,.0f}".replace(",", ".")
+                )
+            else:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                    lambda x: "" if pd.isna(x) else f"{x:,.1f}%".replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+    return out
+
 def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
     fig = px.bar(
         df,
@@ -517,18 +544,17 @@ def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
     return fig
 
 # =========================
-# LOAD - Carregamento automático interno do arquivo único fixado
+# LOAD - Otimizado para suportar Parquet Compactado
 # =========================
-excel_path = find_excel_file()
-if excel_path is None:
-    st.error("Não encontrei nenhuma planilha de dados (como modal_realizado.csv) no repositório do projeto.")
+data_path = find_data_file()
+if data_path is None:
+    st.error("Não encontrei nenhuma planilha de dados (como modal_realizado.parquet) no repositório.")
     st.stop()
 
-raw = load_excel_path(str(excel_path))
-source_name = excel_path.name
+raw = load_data_path(str(data_path))
+source_name = data_path.name
 
 df_all = prep_data(raw)
-
 
 # =========================
 # HEADER
