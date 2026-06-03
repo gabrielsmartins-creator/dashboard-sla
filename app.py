@@ -114,7 +114,6 @@ def fmt_pct(x):
 # =========================
 @st.cache_data(show_spinner="Carregando malha de dados ultra compactada... Aguarde.")
 def carregar_dados_parquet(url):
-    # Lê o arquivo Parquet hospedado no link de forma instantânea consumindo pouca RAM
     return pd.read_parquet(url)
 
 LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.parquet"
@@ -332,4 +331,9 @@ with tab3:
 
 with tab4:
     st.subheader("Análise de Malhas por Cidade")
-    cidade_df = agg_metrics(df,
+    cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
+    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(250)), width="stretch")
+
+    st.subheader("Análise de Micro-região (Top CEP5 e CEP3)")
+    cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
+    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(250)), width="stretch")
