@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Last Mile SLA Intelligence</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.0/build/stlite.css" />
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.0/build/stlite.js"></script>
+    <script>
+        stlite.mount({
+            requirements: ["pandas", "numpy", "plotly", "pyarrow"], // Bibliotecas pesadas que o navegador vai instalar
+            entrypoint: "app.py",
+            files: {
+                "app.py": {
+                    url: "app.py" // Ele vai ler o seu arquivo app.py que já está no repositório
+                }
+            }
+        }, document.getElementById("root"));
+    </script>
+</body>
+</html>
