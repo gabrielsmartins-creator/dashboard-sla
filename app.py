@@ -110,25 +110,23 @@ def fmt_pct(x):
     except Exception: return str(x)
 
 # =========================
-# CARREGAMENTO PARQUET DA NUVEM EM HIGH PERFORMANCE
+# CARREGAMENTO GLOBAL COMPARTILHADO (ANTI-CRASH)
 # =========================
-@st.cache_data(show_spinner="Carregando malha de dados ultra compactada... Aguarde.")
+@st.cache_resource(show_spinner="Carregando malha de dados compartilhada... Aguarde.")
 def carregar_dados_parquet(url):
     df = pd.read_parquet(url)
     df.columns = [str(c).strip().strip('"').strip().lower() for c in df.columns]
     
-    # 1. Ajuste de Modal
     if "modal" not in df.columns and "modal transp" in df.columns:
         df["modal"] = df["modal transp"]
     if "modal" in df.columns:
         df["modal"] = df["modal"].astype(str).str.upper().str.strip().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
 
-    # 2. Garantir colunas numéricas de prazo
     for c in ["prazo_cliente", "realizado_cliente"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
-    # 3. REDE DE SEGURANÇA OPERACIONAL: Recriar colunas de apoio caso não existam no Parquet
+    # Cálculo em memória centralizado
     df["aux_antecipado"] = (df["realizado_cliente"] < df["prazo_cliente"]).astype(np.int8)
     df["aux_no_prazo"] = (df["realizado_cliente"] == df["prazo_cliente"]).astype(np.int8)
     df["aux_atrasado"] = (df["realizado_cliente"] > df["prazo_cliente"]).astype(np.int8)
@@ -138,7 +136,6 @@ def carregar_dados_parquet(url):
     df["gap_prazo"] = df["prazo_cliente"] - df["realizado_cliente"]
     df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
 
-    # 4. Garantir prefixos de CEP
     if "cep_cliente" in df.columns:
         cep = df["cep_cliente"].astype(str).str.replace(r"\D", "", regex=True)
         df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
@@ -154,7 +151,7 @@ LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/
 try:
     df_all = carregar_dados_parquet(LINK_DO_MEU_PARQUET)
 except Exception as e:
-    st.error("Não consegui conectar ao banco de dados Parquet na nuvem. Verifique o link nos lançamentos.")
+    st.error("Não consegui conectar ao banco de dados Parquet na nuvem.")
     st.code(str(e))
     st.stop()
 
@@ -254,7 +251,7 @@ st.markdown(f"""
             <div style="margin-top:14px">
                 <span class="badge">Fonte: modal_realizado.parquet (GitHub Releases Cloud)</span>
                 <span class="badge">NS = Antecipado + No Prazo</span>
-                <span class="badge">Ambiente Estabilizado Corporativo</span>
+                <span class="badge">Ambiente Estabilizado Multiusuário</span>
             </div>
         </div>
         <div><img src="data:image/png;base64,{image_to_base64(LOGO_PATH)}" style="max-height:58px; max-width:190px; object-fit:contain;" /></div>
