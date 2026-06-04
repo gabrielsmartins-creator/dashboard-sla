@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE CORRIGIDO (ESPAÇAMENTO EXPANDIDO)
+# STYLE & ADAPTIVE DARK MODE CORRIGIDO
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -32,7 +32,6 @@ st.markdown("""
 .block-container { padding-top: 1rem; padding-left: 1.4rem; padding-right: 1.4rem; padding-bottom: 3rem; }
 h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing: -0.02rem; }
 
-/* FIX: Aumentado o padding superior e ajustado o line-height para o título não cortar */
 .top-shell {
     background: linear-gradient(135deg, #071B45 0%, #0B3A75 48%, #8FD8FF 100%);
     padding: 32px 26px 24px 26px;
@@ -251,6 +250,7 @@ def agg_metrics(df, group_cols):
     )
     return g.sort_values(["score_prioridade", "oportunidade"], ascending=False)
 
+# CORES VIA MÉTODOS NATIVOS ACEITOS NO STLITE/WASM
 def style_table(df):
     view = df.copy()
     view = view.rename(columns={c: DISPLAY_NAMES.get(c, c) for c in view.columns})
@@ -273,29 +273,32 @@ def style_table(df):
 
     styler = view.style.format(fmt, decimal=",", thousands=".")
     
-    for c in pct_cols:
-        if c in view.columns:
-            s_col = view[c]
-            styles = np.select(
-                [s_col >= 99, s_col >= 95, s_col >= 85],
-                ["background-color: #D1FADF; color: #027A48; font-weight: 900",
-                 "background-color: #EAF2FF; color: #155EEF; font-weight: 800",
-                 "background-color: #FEF0C7; color: #B54708; font-weight: 800"],
-                default="background-color: #FEE4E2; color: #B42318; font-weight: 800"
-            )
-            styler.style_configs.append((list(view.index), view.columns.get_loc(c), styles))
-            
+    # Função limpa injetada coluna por coluna mapeando as strings de CSS
+    def color_pct_grid(series):
+        return [
+            "background-color: #D1FADF; color: #027A48; font-weight: 900" if v >= 99 else
+            "background-color: #EAF2FF; color: #155EEF; font-weight: 800" if v >= 95 else
+            "background-color: #FEF0C7; color: #B54708; font-weight: 800" if v >= 85 else
+            "background-color: #FEE4E2; color: #B42318; font-weight: 800"
+            for v in series
+        ]
+
+    def color_action_grid(series):
+        return [
+            "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else
+            "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else
+            "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else
+            "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else ""
+            for v in series
+        ]
+
+    # Aplicação via método nativo estável do Pandas Styler
+    valid_pct_cols = [c for c in pct_cols if c in view.columns]
+    if valid_pct_cols:
+        styler = styler.apply(color_pct_grid, axis=0, subset=valid_pct_cols)
+        
     if "Classe ação" in view.columns:
-        c_col = view["Classe ação"]
-        c_styles = np.select(
-            [c_col == "Redução agressiva", c_col == "Atacar agora", c_col == "Testar redução", c_col == "Risco operacional"],
-            ["background-color:#D1FADF;color:#027A48;font-weight:900",
-             "background-color:#EAF2FF;color:#155EEF;font-weight:900",
-             "background-color:#FEF0C7;color:#B54708;font-weight:900",
-             "background-color:#FEE4E2;color:#B42318;font-weight:900"],
-            default=""
-        )
-        styler.style_configs.append((list(view.index), view.columns.get_loc("Classe ação"), c_styles))
+        styler = styler.apply(color_action_grid, axis=0, subset=["Classe ação"])
         
     return styler
 
@@ -423,7 +426,7 @@ if not rank_loc.empty:
     """, unsafe_allow_html=True)
 
 # =========================
-# AS ABAS OPERACIONAIS RESTANTES (MÁXIMO 100 A 200 LINHAS)
+# AS ABAS OPERACIONAIS (MÁXIMO 100 A 200 LINHAS)
 # =========================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🌎 Geografia", "🎯 SLA sugerido", "⏱️ Prazo x Realizado", "🚚 Transportador", "📍 CEP / Cidade"
