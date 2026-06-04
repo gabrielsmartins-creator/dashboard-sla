@@ -156,14 +156,26 @@ except Exception as e:
     st.stop()
 
 # =========================
-# FILTROS DINÂMICOS
+# FILTROS DINÂMICOS COM VALORES EM BRANCO
 # =========================
 def filter_one_click(label, col, df, key_suffix):
-    values = sorted([v for v in df[col].dropna().astype(str).unique() if v and v.lower() != "nan"])
-    return st.selectbox(label, ["TODOS"] + values, key=f"sel_{col}_{key_suffix}")
+    valores_serie = df[col].astype(str).str.strip()
+    tem_vazio = valores_serie.isin(["", "nan", "None", "NAT", "N/A"]).any()
+    valores_limpos = sorted([v for v in valores_serie.unique() if v and v.lower() not in ["", "nan", "none", "nat", "n/a"]])
+    
+    opcoes = ["TODOS"]
+    if tem_vazio:
+        opcoes.append("EM BRANCO")
+    opcoes.extend(valores_limpos)
+    
+    return st.selectbox(label, opcoes, key=f"sel_{col}_{key_suffix}")
 
 def apply_filter(df, col, value):
-    return df if value == "TODOS" else df[df[col].astype(str) == value]
+    if value == "TODOS":
+        return df
+    if value == "EM BRANCO":
+        return df[df[col].astype(str).str.strip().isin(["", "nan", "None", "NAT", "N/A"])]
+    return df[df[col].astype(str).str.strip() == value]
 
 def prazo_ate_filter(label, col, df, key_suffix):
     valores = df[col]
@@ -251,7 +263,7 @@ st.markdown(f"""
             <div style="margin-top:14px">
                 <span class="badge">Fonte: modal_realizado.parquet (GitHub Releases Cloud)</span>
                 <span class="badge">NS = Antecipado + No Prazo</span>
-                <span class="badge">Ambiente Estabilizado Multiusuário</span>
+                <span class="badge">Ambiente Otimizado para Grandes Malhas (1M+)</span>
             </div>
         </div>
         <div><img src="data:image/png;base64,{image_to_base64(LOGO_PATH)}" style="max-height:58px; max-width:190px; object-fit:contain;" /></div>
@@ -325,7 +337,7 @@ with st.container():
     f.metric("Realizado", f"{fmt_num(df['realizado_cliente'].mean(),1)}d")
 
 # =========================
-# AS 4 ABAS ORIGINAIS RESTAURADAS E COMPLETAS
+# AS 4 ABAS ORIGINAIS (OTIMIZADAS PARA EXIBIR TOP 100 CRÍTICOS)
 # =========================
 tab1, tab2, tab3, tab4 = st.tabs([
     "🌎 Geografia",
@@ -337,11 +349,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.subheader("Análise Completa por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
-    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(250)), width="stretch")
+    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(100)), width="stretch")
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
-    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(250)), width="stretch")
+    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(100)), width="stretch")
 
 with tab2:
     st.subheader("Lead Time Histórico: Prazo Prometido Cliente x Realizado")
@@ -354,18 +366,18 @@ with tab2:
     ).reset_index()
     lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
-    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(250)), width="stretch")
+    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(100)), width="stretch")
 
 with tab3:
     st.subheader("Negociação Completa por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)", "transportador"])
-    st.dataframe(style_table(lt[lt["pedidos"] >= min_volume].head(250)), width="stretch")
+    st.dataframe(style_table(lt[lt["pedidos"] >= min_volume].head(100)), width="stretch")
 
 with tab4:
     st.subheader("Análise de Malhas por Cidade")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
-    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(250)), width="stretch")
+    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(100)), width="stretch")
 
     st.subheader("Análise de Micro-região (Top CEP5 e CEP3)")
     cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
-    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(250)), width="stretch")
+    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(100)), width="stretch")
