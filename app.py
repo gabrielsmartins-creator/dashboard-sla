@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE
+# STYLE & ADAPTIVE DARK MODE CORRIGIDO DEFINITIVO
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -70,13 +70,19 @@ h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing
     font-size: .82rem;
     margin-right: 8px;
 }
+
+/* CARDS DE MÉTRICAS OPERACIONAIS */
 [data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 950 !important; color: #071B45 !important; }
 [data-testid="stMetricLabel"] { color: #667085 !important; font-size: .78rem !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .055rem !important; }
 [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
 [data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
 
-/* AJUSTE PARA LABELS ADAPTATIVOS (CORRIGE TEMA ESCURO) */
-.stSelectbox label p, .stTextInput label p, .stSlider label p {
+/* FIX DEFINITIVO PARA LABELS DOS FILTROS NO TEMA DARK */
+.stSelectbox label, .stTextInput label, .stSlider label, [data-testid="stWidgetLabel"] {
+    color: var(--text-color, #071B45) !important;
+    font-weight: 800 !important;
+}
+.stSelectbox label p, .stTextInput label p, .stSlider label p, [data-testid="stWidgetLabel"] p {
     color: var(--text-color, #071B45) !important;
     font-weight: 800 !important;
 }
@@ -124,14 +130,28 @@ def carregar_dados_parquet(url):
     
     if "modal" not in df.columns and "modal transp" in df.columns:
         df["modal"] = df["modal transp"]
+        
+    # Padronização de strings vazias ou nulas nativas do formato Parquet
+    colunas_texto = [
+        "geografia_comercial", "modal", "uf cliente", "cidade cliente",
+        "localizacao_comercial", "ecc", "cd faturamento", "cd responsavel",
+        "transportador (grupo)", "transportador", "situacao", "cep_cliente"
+    ]
+    for c in colunas_texto:
+        if c in df.columns:
+            # Substitui nulos ou textos que representam nulos por "EM BRANCO" de forma fixa
+            df[c] = df[c].astype(str).str.strip()
+            df[c] = df[c].replace(["", "nan", "None", "<NA>", "NAT", "N/A"], "EM BRANCO")
+            df[c] = df[c].fillna("EM BRANCO")
+
     if "modal" in df.columns:
-        df["modal"] = df["modal"].astype(str).str.upper().str.strip().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
+        df["modal"] = df["modal"].str.upper().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
 
     for c in ["prazo_cliente", "realizado_cliente"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
-    # Cálculo em memória centralizado
+    # Cálculo em memória centralizado estruturado em int8
     df["aux_antecipado"] = (df["realizado_cliente"] < df["prazo_cliente"]).astype(np.int8)
     df["aux_no_prazo"] = (df["realizado_cliente"] == df["prazo_cliente"]).astype(np.int8)
     df["aux_atrasado"] = (df["realizado_cliente"] > df["prazo_cliente"]).astype(np.int8)
@@ -142,9 +162,9 @@ def carregar_dados_parquet(url):
     df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
 
     if "cep_cliente" in df.columns:
-        cep = df["cep_cliente"].astype(str).str.replace(r"\D", "", regex=True)
-        df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
-        df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
+        cep = df["cep_cliente"].str.replace(r"\D", "", regex=True)
+        df["cep_prefixo3"] = cep.str[:3].replace("", "EM BRANCO")
+        df["cep_prefixo5"] = cep.str[:5].replace("", "EM BRANCO")
 
     if "pedido_gemco" not in df.columns:
         df["pedido_gemco"] = np.arange(len(df)) + 1
@@ -161,14 +181,16 @@ except Exception as e:
     st.stop()
 
 # =========================
-# FILTROS DINÂMICOS COM SELEÇÃO "EM BRANCO" E CORREÇÃO DE TIPO
+# FILTROS DINÂMICOS CORRIGIDOS PARA PARQUET
 # =========================
 def filter_one_click(label, col, df, key_suffix):
     valores_serie = df[col].astype(str).str.strip()
-    tem_vazio = valores_serie.isin(["", "nan", "None", "NAT", "N/A"]).any()
     
-    # PROTEÇÃO EXPLICITA ANTI-ATTRIBUTERROR: Garante conversão para string antes do .lower()
-    valores_limpos = sorted([str(v) for v in valores_serie.unique() if v and str(v).lower() not in ["", "nan", "none", "nat", "n/a"]])
+    # Verifica se o termo padronizado "EM BRANCO" está presente nas linhas
+    tem_vazio = (valores_serie == "EM BRANCO").any()
+    
+    # Lista os valores limpando o termo "EM BRANCO" para adicioná-lo de forma ordenada no topo
+    valores_limpos = sorted([str(v) for v in valores_serie.unique() if v and str(v) != "EM BRANCO"])
     
     opcoes = ["TODOS"]
     if tem_vazio:
@@ -180,8 +202,6 @@ def filter_one_click(label, col, df, key_suffix):
 def apply_filter(df, col, value):
     if value == "TODOS":
         return df
-    if value == "EM BRANCO":
-        return df[df[col].astype(str).str.strip().isin(["", "nan", "None", "NAT", "N/A"])]
     return df[df[col].astype(str).str.strip() == value]
 
 def prazo_ate_filter(label, col, df, key_suffix):
