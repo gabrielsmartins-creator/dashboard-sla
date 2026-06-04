@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE CORRIGIDO
+# STYLE & ADAPTIVE DARK MODE CORRIGIDO DEFINITIVO
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -77,8 +77,12 @@ h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing
 [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
 [data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
 
-/* FIX DEFINITIVO PARA LABELS DOS FILTROS NO TEMA DARK */
-[data-testid="stWidgetLabel"] p {
+/* REQUISITO: CORREÇÃO TOTAL DOS TEXTOS DOS FILTROS NO TEMA DARK */
+.stSelectbox label, .stTextInput label, .stSlider label, [data-testid="stWidgetLabel"] {
+    color: var(--text-color, #071B45) !important;
+    font-weight: 800 !important;
+}
+.stSelectbox label p, .stTextInput label p, .stSlider label p, [data-testid="stWidgetLabel"] p {
     color: var(--text-color, #071B45) !important;
     font-weight: 800 !important;
 }
