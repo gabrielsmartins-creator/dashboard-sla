@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE
+# STYLE & ADAPTIVE DARK MODE CORRIGIDO (ESPAÇAMENTO EXPANDIDO)
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -32,15 +32,22 @@ st.markdown("""
 .block-container { padding-top: 1rem; padding-left: 1.4rem; padding-right: 1.4rem; padding-bottom: 3rem; }
 h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing: -0.02rem; }
 
+/* FIX: Aumentado o padding superior e ajustado o line-height para o título não cortar */
 .top-shell {
     background: linear-gradient(135deg, #071B45 0%, #0B3A75 48%, #8FD8FF 100%);
-    padding: 24px 26px;
+    padding: 32px 26px 24px 26px;
     border-radius: 24px;
     color: white;
     box-shadow: 0 18px 38px rgba(7,27,69,.22);
     margin-bottom: 18px;
 }
-.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.05; color: #FFFFFF !important; }
+.top-title { 
+    font-size: 2.15rem; 
+    font-weight: 950; 
+    line-height: 1.3 !important; 
+    color: #FFFFFF !important;
+    padding-top: 4px;
+}
 .top-subtitle { color: #D9E6FF; font-size: .98rem; margin-top: 8px; }
 .badge {
     display: inline-block;
@@ -247,6 +254,7 @@ def agg_metrics(df, group_cols):
 def style_table(df):
     view = df.copy()
     view = view.rename(columns={c: DISPLAY_NAMES.get(c, c) for c in view.columns})
+    
     for c in view.columns:
         if str(c).startswith("%") or str(c).lower() == "ns" or "eficiência" in str(c).lower():
             view[c] = pd.to_numeric(view[c], errors="coerce") * 100
@@ -256,15 +264,39 @@ def style_table(df):
     fmt = {c: "{:.1f}%" for c in pct_cols}
     
     for c in numeric_cols:
-        if c in {"Pedido", "CD faturamento", "CD Faturamento", "CD responsável", "CD Responsável", "CEP", "CEP3", "CEP5"}: fmt[c] = "{:.0f}"
-        elif c in {"Pedidos", "Antecipados", "No prazo", "Atrasados", "Atraso total", "Oportunidade"}: fmt[c] = "{:,.0f}"
-        else: fmt[c] = "{:,.1f}"
+        if c in {"Pedido", "CD faturamento", "CD Faturamento", "CD responsável", "CD Responsável", "CEP", "CEP3", "CEP5"}: 
+            fmt[c] = "{:.0f}"
+        elif c in {"Pedidos", "Antecipados", "No prazo", "Atrasados", "Atraso total", "Oportunidade"}: 
+            fmt[c] = "{:,.0f}"
+        else: 
+            fmt[c] = "{:,.1f}"
 
     styler = view.style.format(fmt, decimal=",", thousands=".")
+    
     for c in pct_cols:
-        if c in view.columns: styler = styler.map(lambda v: "background-color: #D1FADF; color: #027A48; font-weight: 900" if float(v) >= 99 else "background-color: #EAF2FF; color: #155EEF; font-weight: 800" if float(v) >= 95 else "background-color: #FEF0C7; color: #B54708; font-weight: 800" if float(v) >= 85 else "background-color: #FEE4E2; color: #B42318; font-weight: 800", subset=[c])
+        if c in view.columns:
+            s_col = view[c]
+            styles = np.select(
+                [s_col >= 99, s_col >= 95, s_col >= 85],
+                ["background-color: #D1FADF; color: #027A48; font-weight: 900",
+                 "background-color: #EAF2FF; color: #155EEF; font-weight: 800",
+                 "background-color: #FEF0C7; color: #B54708; font-weight: 800"],
+                default="background-color: #FEE4E2; color: #B42318; font-weight: 800"
+            )
+            styler.style_configs.append((list(view.index), view.columns.get_loc(c), styles))
+            
     if "Classe ação" in view.columns:
-        styler = styler.map(lambda v: "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else "", subset=["Classe action" if "Classe action" in view.columns else "Classe ação"])
+        c_col = view["Classe ação"]
+        c_styles = np.select(
+            [c_col == "Redução agressiva", c_col == "Atacar agora", c_col == "Testar redução", c_col == "Risco operacional"],
+            ["background-color:#D1FADF;color:#027A48;font-weight:900",
+             "background-color:#EAF2FF;color:#155EEF;font-weight:900",
+             "background-color:#FEF0C7;color:#B54708;font-weight:900",
+             "background-color:#FEE4E2;color:#B42318;font-weight:900"],
+            default=""
+        )
+        styler.style_configs.append((list(view.index), view.columns.get_loc("Classe ação"), c_styles))
+        
     return styler
 
 def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
@@ -391,37 +423,22 @@ if not rank_loc.empty:
     """, unsafe_allow_html=True)
 
 # =========================
-# AS ABAS ORIGINAIS (MÁXIMO 100 A 200 LINHAS PARA ULTRA DESEMPENHO)
+# AS ABAS OPERACIONAIS RESTANTES (MÁXIMO 100 A 200 LINHAS)
 # =========================
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📌 Executivo", "🌎 Geografia", "🎯 SLA sugerido", "⏱️ Prazo x Realizado", "🚚 Transportador", "📍 CEP / Cidade"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🌎 Geografia", "🎯 SLA sugerido", "⏱️ Prazo x Realizado", "🚚 Transportador", "📍 CEP / Cidade"
 ])
 
 with tab1:
-    c1, c2 = st.columns([1.1, 1])
-    with c1:
-        top = rank_loc.head(15)
-        if not top.empty:
-            st.plotly_chart(bar(top.sort_values("oportunidade"), "oportunidade", "localizacao_comercial", "Top Localizações por oportunidade", color="classe_acao", orientation="h", height=560), use_container_width=True)
-    with c2:
-        status = pd.DataFrame({"Status": ["Antecipado", "No Prazo", "Atrasado"], "Pedidos": [antecipados, no_prazo, atrasados]})
-        fig = px.pie(status, names="Status", values="Pedidos", hole=.54, title="Composição do NS", color="Status", color_discrete_map={"Antecipado": CYAN, "No Prazo": GREEN, "Atrasado": RED})
-        fig.update_traces(textinfo="percent+label")
-        fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=360, margin=dict(l=20,r=20,t=55,b=20))
-        st.plotly_chart(fig, use_container_width=True)
-
-with tab2:
     st.subheader("Análise por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
-    geo = geo[geo["pedidos"] >= min_volume]
     st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(100)), use_container_width=True)
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
-    gl = gl[gl["pedidos"] >= min_volume]
     st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(100)), use_container_width=True)
 
-with tab3:
+with tab2:
     st.subheader("Ranking de SLA sugerido e redução de prazo")
     dim_label = st.selectbox("Dimensão", ["Geografia + Localização", "Geografia + Transportador", "Geografia + Cidade", "Localização + Transportador", "ECC + CDs", "CEP5", "CEP3", "Modal"], key="sel_dim_tab3")
     dim_map = {
@@ -443,7 +460,7 @@ with tab3:
         first_dim = dim_map[dim_label][-1]
         st.plotly_chart(bar(rank.head(25).sort_values("score_prioridade"), "score_prioridade", first_dim, "Score de prioridade para redução", color="classe_acao", orientation="h", height=720), use_container_width=True)
 
-with tab4:
+with tab3:
     st.subheader("Lead Time: prazo prometido x realizado")
     lead = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "prazo_cliente", "realizado_cliente"], dropna=False).agg(
         pedidos=("pedido_gemco", "nunique"), oportunidade=("oportunidade", "sum"), antecipados=("aux_antecipado", "sum"), no_prazo=("aux_no_prazo", "sum"), atrasados=("aux_atrasado", "sum"),
@@ -452,7 +469,7 @@ with tab4:
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
     st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(150)), use_container_width=True)
 
-with tab5:
+with tab4:
     st.subheader("Negociação por Transportador")
     lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"])
     lt = lt[lt["pedidos"] >= min_volume]
@@ -460,7 +477,7 @@ with tab5:
     if not lt.empty:
         st.plotly_chart(bar(lt.head(25).sort_values("oportunidade"), "oportunidade", "transportador (grupo)", "Oportunidade por Transportador (grupo)", color="classe_acao", orientation="h", height=720), use_container_width=True)
 
-with tab6:
+with tab5:
     st.subheader("Cidade e CEP")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
     cidade_df = cidade_df[cidade_df["pedidos"] >= min_volume]
