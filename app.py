@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE
+# STYLE & ADAPTIVE DARK MODE
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -40,14 +40,14 @@ def image_to_base64(path):
 
 st.markdown("""
 <style>
-.main { background: #F4F8FF; }
+.main { background: var(--background-color, #F4F8FF); }
 .block-container { 
     padding-top: 2.2rem !important;
     padding-left: 1.4rem; 
     padding-right: 1.4rem; 
     padding-bottom: 3rem; 
 }
-h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
+h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing: -0.02rem; }
 
 .top-shell {
     background: linear-gradient(135deg, #071B45 0%, #0B3A75 48%, #8FD8FF 100%);
@@ -57,7 +57,7 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
     box-shadow: 0 18px 38px rgba(7,27,69,.22);
     margin-bottom: 22px;
 }
-.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.2; }
+.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.2; color: #FFFFFF !important; }
 .top-subtitle { color: #D9E6FF; font-size: .98rem; margin-top: 10px; }
 .badge {
     display: inline-block;
@@ -74,7 +74,12 @@ h1, h2, h3 { color: #071B45; font-weight: 900; letter-spacing: -0.02rem; }
 [data-testid="stMetricLabel"] { color: #667085 !important; font-size: .78rem !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .055rem !important; }
 [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
 [data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
-.stSelectbox label, .stTextInput label, .stSlider label { color: #071B45 !important; font-weight: 800 !important; }
+
+/* AJUSTE PARA LABELS ADAPTATIVOS (CORRIGE TEMA ESCURO) */
+.stSelectbox label p, .stTextInput label p, .stSlider label p {
+    color: var(--text-color, #071B45) !important;
+    font-weight: 800 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -156,12 +161,14 @@ except Exception as e:
     st.stop()
 
 # =========================
-# FILTROS DINÂMICOS COM VALORES EM BRANCO
+# FILTROS DINÂMICOS COM SELEÇÃO "EM BRANCO" E CORREÇÃO DE TIPO
 # =========================
 def filter_one_click(label, col, df, key_suffix):
     valores_serie = df[col].astype(str).str.strip()
     tem_vazio = valores_serie.isin(["", "nan", "None", "NAT", "N/A"]).any()
-    valores_limpos = sorted([v for v in valores_serie.unique() if v and v.lower() not in ["", "nan", "none", "nat", "n/a"]])
+    
+    # PROTEÇÃO EXPLICITA ANTI-ATTRIBUTERROR: Garante conversão para string antes do .lower()
+    valores_limpos = sorted([str(v) for v in valores_serie.unique() if v and str(v).lower() not in ["", "nan", "none", "nat", "n/a"]])
     
     opcoes = ["TODOS"]
     if tem_vazio:
