@@ -115,13 +115,38 @@ def fmt_pct(x):
 @st.cache_data(show_spinner="Carregando malha de dados ultra compactada... Aguarde.")
 def carregar_dados_parquet(url):
     df = pd.read_parquet(url)
-    # Normalização forçada de colunas caso o Parquet venha com formatos mistos
     df.columns = [str(c).strip().strip('"').strip().lower() for c in df.columns]
     
-    # GARANTIA ANTI-KEYERROR: Se não houver a coluna 'modal', mas houver 'modal transp', faz o espelhamento
+    # 1. Ajuste de Modal
     if "modal" not in df.columns and "modal transp" in df.columns:
         df["modal"] = df["modal transp"]
-        
+    if "modal" in df.columns:
+        df["modal"] = df["modal"].astype(str).str.upper().str.strip().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
+
+    # 2. Garantir colunas numéricas de prazo
+    for c in ["prazo_cliente", "realizado_cliente"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+
+    # 3. REDE DE SEGURANÇA OPERACIONAL: Recriar colunas de apoio caso não existam no Parquet
+    df["aux_antecipado"] = (df["realizado_cliente"] < df["prazo_cliente"]).astype(np.int8)
+    df["aux_no_prazo"] = (df["realizado_cliente"] == df["prazo_cliente"]).astype(np.int8)
+    df["aux_atrasado"] = (df["realizado_cliente"] > df["prazo_cliente"]).astype(np.int8)
+    
+    df["oportunidade"] = (df["prazo_cliente"] - df["realizado_cliente"]).clip(lower=0)
+    df["atraso_dias"] = (df["realizado_cliente"] - df["prazo_cliente"]).clip(lower=0)
+    df["gap_prazo"] = df["prazo_cliente"] - df["realizado_cliente"]
+    df["eficiencia_entrega"] = np.where(df["prazo_cliente"] > 0, df["realizado_cliente"] / df["prazo_cliente"], np.nan)
+
+    # 4. Garantir prefixos de CEP
+    if "cep_cliente" in df.columns:
+        cep = df["cep_cliente"].astype(str).str.replace(r"\D", "", regex=True)
+        df["cep_prefixo3"] = cep.str[:3].replace("", "N/A")
+        df["cep_prefixo5"] = cep.str[:5].replace("", "N/A")
+
+    if "pedido_gemco" not in df.columns:
+        df["pedido_gemco"] = np.arange(len(df)) + 1
+
     return df
 
 LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.parquet"
@@ -237,6 +262,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# Filtros operacionais
 f0, f1, f2, f3, f4 = st.columns([1.4, 1, 1, 1, 1])
 with f0: busca = st.text_input("Busca rápida", placeholder="Cidade, CEP, ECC, CD, localização ou transportador", key="txt_busca_main")
 with f1: geografia = filter_one_click("Geografia", "geografia_comercial", df_all, "main")
@@ -264,21 +290,22 @@ for col, val in [
     ("ecc", ecc), ("cd faturamento", cd_faturamento), ("cd responsavel", cd_responsavel),
     ("localizacao_comercial", localizacao), ("transportador (grupo)", transportador), ("cidade cliente", cidade)
 ]:
-    df = apply_filter(df, col, val)
+    if col in df.columns:
+        df = apply_filter(df, col, val)
 
 df = apply_prazo_ate_filter(df, "prazo_cliente", prazo_ofertado)
 df = apply_prazo_ate_filter(df, "realizado_cliente", prazo_realizado)
 
 if busca:
     mask = (
-        df["cidade cliente"].str.contains(busca, case=False, na=False) |
-        df["localizacao_comercial"].str.contains(busca, case=False, na=False) |
-        df["transportador (grupo)"].str.contains(busca, case=False, na=False) |
-        df["geografia_comercial"].str.contains(busca, case=False, na=False) |
-        df["ecc"].str.contains(busca, case=False, na=False) |
-        df["cd faturamento"].str.contains(busca, case=False, na=False) |
-        df["cd responsavel"].str.contains(busca, case=False, na=False) |
-        df["cep_cliente"].str.contains(busca, case=False, na=False)
+        df["cidade cliente"].astype(str).str.contains(busca, case=False, na=False) |
+        df["localizacao_comercial"].astype(str).str.contains(busca, case=False, na=False) |
+        df["transportador (grupo)"].astype(str).str.contains(busca, case=False, na=False) |
+        df["geografia_comercial"].astype(str).str.contains(busca, case=False, na=False) |
+        df["ecc"].astype(str).str.contains(busca, case=False, na=False) |
+        df["cd faturamento"].astype(str).str.contains(busca, case=False, na=False) |
+        df["cd responsavel"].astype(str).str.contains(busca, case=False, na=False) |
+        df["cep_cliente"].astype(str).str.contains(busca, case=False, na=False)
     )
     df = df[mask]
 
