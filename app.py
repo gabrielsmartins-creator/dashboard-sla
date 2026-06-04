@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE CORRIGIDO DEFINITIVO
+# STYLE & ADAPTIVE DARK MODE
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -70,19 +70,13 @@ h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing
     font-size: .82rem;
     margin-right: 8px;
 }
-
-/* CARDS DE MÉTRICAS OPERACIONAIS */
 [data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 950 !important; color: #071B45 !important; }
 [data-testid="stMetricLabel"] { color: #667085 !important; font-size: .78rem !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .055rem !important; }
 [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
 [data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
 
-/* REQUISITO: CORREÇÃO TOTAL DOS TEXTOS DOS FILTROS NO TEMA DARK */
-.stSelectbox label, .stTextInput label, .stSlider label, [data-testid="stWidgetLabel"] {
-    color: var(--text-color, #071B45) !important;
-    font-weight: 800 !important;
-}
-.stSelectbox label p, .stTextInput label p, .stSlider label p, [data-testid="stWidgetLabel"] p {
+/* AJUSTE PARA LABELS ADAPTATIVOS (CORRIGE TEMA ESCURO) */
+.stSelectbox label p, .stTextInput label p, .stSlider label p {
     color: var(--text-color, #071B45) !important;
     font-weight: 800 !important;
 }
@@ -167,11 +161,13 @@ except Exception as e:
     st.stop()
 
 # =========================
-# FILTROS DINÂMICOS COM VALORES EM BRANCO
+# FILTROS DINÂMICOS COM SELEÇÃO "EM BRANCO" E CORREÇÃO DE TIPO
 # =========================
 def filter_one_click(label, col, df, key_suffix):
     valores_serie = df[col].astype(str).str.strip()
     tem_vazio = valores_serie.isin(["", "nan", "None", "NAT", "N/A"]).any()
+    
+    # PROTEÇÃO EXPLICITA ANTI-ATTRIBUTERROR: Garante conversão para string antes do .lower()
     valores_limpos = sorted([str(v) for v in valores_serie.unique() if v and str(v).lower() not in ["", "nan", "none", "nat", "n/a"]])
     
     opcoes = ["TODOS"]
