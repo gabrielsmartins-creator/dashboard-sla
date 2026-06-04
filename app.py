@@ -1,6 +1,5 @@
 import streamlit as st
 import base64
-import csv
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -14,7 +13,7 @@ st.set_page_config(
 )
 
 # =========================
-# STYLE & ADAPTIVE DARK MODE CORRIGIDO DEFINITIVO
+# STYLE & ADAPTIVE DARK MODE
 # =========================
 PRIMARY = "#071B45"
 BLUE = "#155EEF"
@@ -27,38 +26,22 @@ YELLOW = "#F79009"
 RED = "#F04438"
 GRAY = "#667085"
 
-APP_DIR = Path(__file__).parent if "__file__" in globals() else Path.cwd()
-LOGO_PATH = APP_DIR / "assets" / "logo_magalog.png"
-
-def image_to_base64(path):
-    try:
-        if path.exists():
-            return base64.b64encode(path.read_bytes()).decode("utf-8")
-    except Exception:
-        return ""
-    return ""
-
 st.markdown("""
 <style>
 .main { background: var(--background-color, #F4F8FF); }
-.block-container { 
-    padding-top: 2.2rem !important;
-    padding-left: 1.4rem; 
-    padding-right: 1.4rem; 
-    padding-bottom: 3rem; 
-}
+.block-container { padding-top: 1rem; padding-left: 1.4rem; padding-right: 1.4rem; padding-bottom: 3rem; }
 h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing: -0.02rem; }
 
 .top-shell {
     background: linear-gradient(135deg, #071B45 0%, #0B3A75 48%, #8FD8FF 100%);
-    padding: 28px 28px;
+    padding: 24px 26px;
     border-radius: 24px;
     color: white;
     box-shadow: 0 18px 38px rgba(7,27,69,.22);
-    margin-bottom: 22px;
+    margin-bottom: 18px;
 }
-.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.2; color: #FFFFFF !important; }
-.top-subtitle { color: #D9E6FF; font-size: .98rem; margin-top: 10px; }
+.top-title { font-size: 2.15rem; font-weight: 950; line-height: 1.05; color: #FFFFFF !important; }
+.top-subtitle { color: #D9E6FF; font-size: .98rem; margin-top: 8px; }
 .badge {
     display: inline-block;
     background: rgba(255,255,255,.14);
@@ -71,21 +54,35 @@ h1, h2, h3 { color: var(--text-color, #071B45); font-weight: 900; letter-spacing
     margin-right: 8px;
 }
 
-/* CARDS DE MÉTRICAS OPERACIONAIS */
-[data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 950 !important; color: #071B45 !important; }
+.insight-card {
+    background: linear-gradient(90deg, #EAF2FF 0%, #FFFFFF 100%);
+    border-left: 7px solid #155EEF;
+    border-radius: 18px;
+    padding: 16px 18px;
+    margin: 10px 0 18px 0;
+    box-shadow: 0 6px 18px rgba(11,58,117,.06);
+    color: #071B45;
+}
+
+/* KPIS EM PRETO NATIVOS (LEVES) */
+[data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 950 !important; color: #000000 !important; }
 [data-testid="stMetricLabel"] { color: #667085 !important; font-size: .78rem !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .055rem !important; }
 [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #D7E6FA; border-radius: 22px; padding: 14px 18px !important; box-shadow: 0 10px 24px rgba(11,58,117,.08); }
 [data-testid="stDataFrame"] { border: 1px solid #D7E6FA; border-radius: 16px; overflow: hidden; }
 
-/* FIX DEFINITIVO PARA LABELS DOS FILTROS NO TEMA DARK */
-.stSelectbox label, .stTextInput label, .stSlider label, [data-testid="stWidgetLabel"] {
-    color: var(--text-color, #071B45) !important;
-    font-weight: 800 !important;
-}
-.stSelectbox label p, .stTextInput label p, .stSlider label p, [data-testid="stWidgetLabel"] p {
-    color: var(--text-color, #071B45) !important;
-    font-weight: 800 !important;
-}
+/* ABAS CUSTOMIZADAS */
+[data-testid="stTabs"] { margin-top: 8px; }
+[data-testid="stTabs"] [data-baseweb="tab-list"] { gap: 10px; border-bottom: 0 !important; align-items: center; background: transparent; }
+[data-testid="stTabs"] [data-baseweb="tab"] { height: 38px; min-height: 38px; padding: 0 18px; border-radius: 10px 10px 0 0; border: 1px solid #D7E6FA; border-bottom: 0; background: #FFFFFF; color: #667085; font-weight: 900; box-shadow: 0 6px 16px rgba(11,58,117,.06); transition: all .18s ease-in-out; }
+[data-testid="stTabs"] [data-baseweb="tab"] p { color: inherit !important; font-weight: 900 !important; font-size: .88rem; }
+[data-testid="stTabs"] [data-baseweb="tab"]:hover { background: #EAF2FF; color: #0B3A75; border-color: #9EC5FE; }
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #155EEF 0%, #0B3A75 100%) !important; color: #FFFFFF !important; border-color: #155EEF !important; box-shadow: 0 10px 24px rgba(21,94,239,.22); }
+[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] p { color: #FFFFFF !important; }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] { display: none; }
+
+/* TEXTOS DOS FILTROS ADAPTATIVOS AO TEMA DARK */
+.stSelectbox label, .stTextInput label, .stSlider label, [data-testid="stWidgetLabel"] { color: var(--text-color, #071B45) !important; font-weight: 800 !important; }
+.stSelectbox label p, .stTextInput label p, .stSlider label p, [data-testid="stWidgetLabel"] p { color: var(--text-color, #071B45) !important; font-weight: 800 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,9 +118,9 @@ def fmt_pct(x):
     except Exception: return str(x)
 
 # =========================
-# CARREGAMENTO GLOBAL COMPARTILHADO (ANTI-CRASH)
+# CARREGAMENTO GLOBAL PARQUET COMPARTILHADO (HIGH PERFORMANCE)
 # =========================
-@st.cache_resource(show_spinner="Carregando malha de dados compartilhada... Aguarde.")
+@st.cache_resource(show_spinner="Carregando malha de dados (1M+)... Aguarde.")
 def carregar_dados_parquet(url):
     df = pd.read_parquet(url)
     df.columns = [str(c).strip().strip('"').strip().lower() for c in df.columns]
@@ -131,7 +128,6 @@ def carregar_dados_parquet(url):
     if "modal" not in df.columns and "modal transp" in df.columns:
         df["modal"] = df["modal transp"]
         
-    # Padronização de strings vazias ou nulas nativas do formato Parquet
     colunas_texto = [
         "geografia_comercial", "modal", "uf cliente", "cidade cliente",
         "localizacao_comercial", "ecc", "cd faturamento", "cd responsavel",
@@ -139,10 +135,8 @@ def carregar_dados_parquet(url):
     ]
     for c in colunas_texto:
         if c in df.columns:
-            # Substitui nulos ou textos que representam nulos por "EM BRANCO" de forma fixa
             df[c] = df[c].astype(str).str.strip()
-            df[c] = df[c].replace(["", "nan", "None", "<NA>", "NAT", "N/A"], "EM BRANCO")
-            df[c] = df[c].fillna("EM BRANCO")
+            df[c] = df[c].replace(["", "nan", "None", "<NA>", "NAT", "N/A"], "EM BRANCO").fillna("EM BRANCO")
 
     if "modal" in df.columns:
         df["modal"] = df["modal"].str.upper().replace({"COURRIER": "COURIER", "RODOVIARIO": "RODO", "RODOVIÁRIO": "RODO"})
@@ -151,7 +145,6 @@ def carregar_dados_parquet(url):
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
-    # Cálculo em memória centralizado estruturado em int8
     df["aux_antecipado"] = (df["realizado_cliente"] < df["prazo_cliente"]).astype(np.int8)
     df["aux_no_prazo"] = (df["realizado_cliente"] == df["prazo_cliente"]).astype(np.int8)
     df["aux_atrasado"] = (df["realizado_cliente"] > df["prazo_cliente"]).astype(np.int8)
@@ -176,20 +169,16 @@ LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/
 try:
     df_all = carregar_dados_parquet(LINK_DO_MEU_PARQUET)
 except Exception as e:
-    st.error("Não consegui conectar ao banco de dados Parquet na nuvem.")
+    st.error("Erro ao conectar à malha de dados Parquet.")
     st.code(str(e))
     st.stop()
 
 # =========================
-# FILTROS DINÂMICOS CORRIGIDOS PARA PARQUET
+# FILTROS DINÂMICOS COM VALORES EM BRANCO
 # =========================
 def filter_one_click(label, col, df, key_suffix):
     valores_serie = df[col].astype(str).str.strip()
-    
-    # Verifica se o termo padronizado "EM BRANCO" está presente nas linhas
     tem_vazio = (valores_serie == "EM BRANCO").any()
-    
-    # Lista os valores limpando o termo "EM BRANCO" para adicioná-lo de forma ordenada no topo
     valores_limpos = sorted([str(v) for v in valores_serie.unique() if v and str(v) != "EM BRANCO"])
     
     opcoes = ["TODOS"]
@@ -275,12 +264,25 @@ def style_table(df):
     for c in pct_cols:
         if c in view.columns: styler = styler.map(lambda v: "background-color: #D1FADF; color: #027A48; font-weight: 900" if float(v) >= 99 else "background-color: #EAF2FF; color: #155EEF; font-weight: 800" if float(v) >= 95 else "background-color: #FEF0C7; color: #B54708; font-weight: 800" if float(v) >= 85 else "background-color: #FEE4E2; color: #B42318; font-weight: 800", subset=[c])
     if "Classe ação" in view.columns:
-        styler = styler.map(lambda v: "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else "", subset=["Classe ação"])
+        styler = styler.map(lambda v: "background-color:#D1FADF;color:#027A48;font-weight:900" if v == "Redução agressiva" else "background-color:#EAF2FF;color:#155EEF;font-weight:900" if v == "Atacar agora" else "background-color:#FEF0C7;color:#B54708;font-weight:900" if v == "Testar redução" else "background-color:#FEE4E2;color:#B42318;font-weight:900" if v == "Risco operacional" else "", subset=["Classe action" if "Classe action" in view.columns else "Classe ação"])
     return styler
 
+def bar(df, x, y, title, color=None, orientation="v", height=430, text=None):
+    fig = px.bar(
+        df, x=x, y=y, color=color, text=text, orientation=orientation, title=title,
+        color_discrete_map={"Redução agressiva": GREEN, "Atacar agora": BLUE, "Testar redução": YELLOW, "Risco operacional": RED, "Monitorar": GRAY, "COURIER": BLUE, "RODO": BLUE_DARK, "MICRO": CYAN, "OUTROS": GRAY},
+        color_discrete_sequence=[BLUE, CYAN, BLUE_DARK, GREEN, YELLOW, RED],
+    )
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white", font_color=PRIMARY, title_font_color=PRIMARY, title_font_size=20, height=height, margin=dict(l=20, r=20, t=58, b=20), legend_title_text="")
+    fig.update_xaxes(gridcolor="#E5EEF9")
+    fig.update_yaxes(gridcolor="#E5EEF9")
+    return fig
+
 # =========================
-# INTERFACE DE USUÁRIO
+# HEADER (LOGO VIA LINK DA NUVEM)
 # =========================
+logo_html = '<img src="https://raw.githubusercontent.com/gabrielsmartins-creator/dashboard-sla/main/assets/logo_magalog.png" style="max-height:58px; max-width:190px; object-fit:contain;" />'
+
 st.markdown(f"""
 <div class="top-shell">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap;">
@@ -288,12 +290,12 @@ st.markdown(f"""
             <div class="top-title">Last Mile SLA Intelligence</div>
             <div class="top-subtitle">Painel operacional para redução de prazo cliente por Geografia, Modal, ECC, CDs, Localização, Transportador, Cidade e CEP.</div>
             <div style="margin-top:14px">
-                <span class="badge">Fonte: modal_realizado.parquet (GitHub Releases Cloud)</span>
+                <span class="badge">Fonte: modal_realizado.parquet (GitHub Releases)</span>
                 <span class="badge">NS = Antecipado + No Prazo</span>
-                <span class="badge">Ambiente Otimizado para Grandes Malhas (1M+)</span>
+                <span class="badge">Ambiente Estabilizado Sem Servidor</span>
             </div>
         </div>
-        <div><img src="data:image/png;base64,{image_to_base64(LOGO_PATH)}" style="max-height:58px; max-width:190px; object-fit:contain;" /></div>
+        <div>{logo_html}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -349,62 +351,124 @@ if df.empty:
     st.warning("Nenhum dado encontrado com os filtros atuais.")
     st.stop()
 
+# Cálculos operacionais de alta performance
 pedidos = df["pedido_gemco"].nunique()
 antecipados = int(df["aux_antecipado"].sum())
 no_prazo = int(df["aux_no_prazo"].sum())
 atrasados = int(df["aux_atrasado"].sum())
+pct_ant = antecipados / max(pedidos, 1)
+pct_atr = atrasados / max(pedidos, 1)
+ns = (antecipados + no_prazo) / max(pedidos, 1)
+prazo_m = df["prazo_cliente"].mean()
+real_m = df["realizado_cliente"].mean()
+gap_m = df["gap_prazo"].mean()
 
-with st.container():
-    a, b, c, d, e, f = st.columns(6)
-    a.metric("Pedidos", fmt_num(pedidos))
-    b.metric("NS geral", fmt_pct((antecipados + no_prazo) / max(pedidos, 1)))
-    c.metric("% antecipado", fmt_pct(antecipados / max(pedidos, 1)))
-    d.metric("% atraso", fmt_pct(atrasados / max(pedidos, 1)))
-    e.metric("Prazo ofertado", f"{fmt_num(df['prazo_cliente'].mean(),1)}d")
-    f.metric("Realizado", f"{fmt_num(df['realizado_cliente'].mean(),1)}d")
+# KPIs Nativos Leves na Cor Preta
+a, b, c, d, e, f = st.columns(6)
+a.metric("Pedidos", fmt_num(pedidos), help="Pedidos únicos filtrados")
+b.metric("NS geral", fmt_pct(ns), help="Antecipado + no prazo")
+c.metric("% antecipado", fmt_pct(pct_ant), help="Principal alavanca de redução")
+d.metric("% atraso", fmt_pct(pct_atr), help="Risco operacional")
+e.metric("Prazo ofertado", f"{fmt_num(prazo_m,1)}d", help="Média cliente")
+f.metric("Realizado", f"{fmt_num(real_m,1)}d", help="Média real")
+
+h, j = st.columns(2)
+h.metric("Gap médio", f"{fmt_num(gap_m,1)}d", help="Ofertado - realizado")
+j.metric("Atrasos", fmt_num(atrasados), help="Pedidos fora do prazo")
+
+# Insight Inteligente Compartilhado
+rank_loc = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
+rank_loc = rank_loc[rank_loc["pedidos"] >= min_volume]
+if not rank_loc.empty:
+    r = rank_loc.iloc[0]
+    st.markdown(f"""
+    <div class="insight-card">
+        <b>Melhor alvo operacional:</b> <b>{r['localizacao_comercial']}</b> na geografia <b>{r['geografia_comercial']}</b>,
+        modal <b>{r['modal']}</b>, com <b>{fmt_num(r['pedidos'])}</b> pedidos,
+        <b>{fmt_pct(r['% antecipado'])}</b> antecipado, <b>{fmt_pct(r['ns'])}</b> NS e
+        <b>{fmt_num(r['oportunidade'])} dias</b> de oportunidade. Ação sugerida: <b>{r['classe_acao']}</b>.
+    </div>
+    """, unsafe_allow_html=True)
 
 # =========================
-# AS 4 ABAS ORIGINAIS (OTIMIZADAS PARA EXIBIR TOP 100 CRÍTICOS)
+# AS ABAS ORIGINAIS (MÁXIMO 100 A 200 LINHAS PARA ULTRA DESEMPENHO)
 # =========================
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🌎 Geografia",
-    "⏱️ Prazo x Realizado",
-    "🚚 Transportador",
-    "📍 CEP / Cidade"
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📌 Executivo", "🌎 Geografia", "🎯 SLA sugerido", "⏱️ Prazo x Realizado", "🚚 Transportador", "📍 CEP / Cidade"
 ])
 
 with tab1:
-    st.subheader("Análise Completa por Geografia Comercial")
+    c1, c2 = st.columns([1.1, 1])
+    with c1:
+        top = rank_loc.head(15)
+        if not top.empty:
+            st.plotly_chart(bar(top.sort_values("oportunidade"), "oportunidade", "localizacao_comercial", "Top Localizações por oportunidade", color="classe_acao", orientation="h", height=560), use_container_width=True)
+    with c2:
+        status = pd.DataFrame({"Status": ["Antecipado", "No Prazo", "Atrasado"], "Pedidos": [antecipados, no_prazo, atrasados]})
+        fig = px.pie(status, names="Status", values="Pedidos", hole=.54, title="Composição do NS", color="Status", color_discrete_map={"Antecipado": CYAN, "No Prazo": GREEN, "Atrasado": RED})
+        fig.update_traces(textinfo="percent+label")
+        fig.update_layout(paper_bgcolor="white", title_font_color=PRIMARY, height=360, margin=dict(l=20,r=20,t=55,b=20))
+        st.plotly_chart(fig, use_container_width=True)
+
+with tab2:
+    st.subheader("Análise por Geografia Comercial")
     geo = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"])
-    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(100)), width="stretch")
+    geo = geo[geo["pedidos"] >= min_volume]
+    st.dataframe(style_table(geo[geo["pedidos"] >= min_volume].head(100)), use_container_width=True)
 
     st.subheader("Geografia x Localização")
     gl = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"])
-    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(100)), width="stretch")
+    gl = gl[gl["pedidos"] >= min_volume]
+    st.dataframe(style_table(gl[gl["pedidos"] >= min_volume].head(100)), use_container_width=True)
 
-with tab2:
-    st.subheader("Lead Time Histórico: Prazo Prometido Cliente x Realizado")
+with tab3:
+    st.subheader("Ranking de SLA sugerido e redução de prazo")
+    dim_label = st.selectbox("Dimensão", ["Geografia + Localização", "Geografia + Transportador", "Geografia + Cidade", "Localização + Transportador", "ECC + CDs", "CEP5", "CEP3", "Modal"], key="sel_dim_tab3")
+    dim_map = {
+        "Geografia + Localização": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial"],
+        "Geografia + Transportador": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "transportador (grupo)"],
+        "Geografia + Cidade": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cidade cliente"],
+        "Localização + Transportador": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"],
+        "ECC + CDs": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"],
+        "CEP5": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cep_prefixo5"],
+        "CEP3": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "cep_prefixo3"],
+        "Modal": ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel"],
+    }
+    rank = agg_metrics(df, dim_map[dim_label])
+    rank = rank[rank["pedidos"] >= min_volume]
+    cols = [c for c in rank.columns if c in dim_map[dim_label] + ["pedidos", "% antecipado", "% no prazo", "% atrasado", "ns", "oportunidade", "media_ofertado", "media_realizado", "p80_realizado", "sla_sugerido_p80", "reducao_media_potencial", "score_prioridade", "classe_acao"]]
+    st.dataframe(style_table(rank[cols].head(150)), use_container_width=True)
+
+    if not rank.empty:
+        first_dim = dim_map[dim_label][-1]
+        st.plotly_chart(bar(rank.head(25).sort_values("score_prioridade"), "score_prioridade", first_dim, "Score de prioridade para redução", color="classe_acao", orientation="h", height=720), use_container_width=True)
+
+with tab4:
+    st.subheader("Lead Time: prazo prometido x realizado")
     lead = df.groupby(["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "prazo_cliente", "realizado_cliente"], dropna=False).agg(
-        pedidos=("pedido_gemco", "nunique"),
-        oportunidade=("oportunidade", "sum"),
-        antecipados=("aux_antecipado", "sum"),
-        no_prazo=("aux_no_prazo", "sum"),
-        atrasados=("aux_atrasado", "sum"),
+        pedidos=("pedido_gemco", "nunique"), oportunidade=("oportunidade", "sum"), antecipados=("aux_antecipado", "sum"), no_prazo=("aux_no_prazo", "sum"), atrasados=("aux_atrasado", "sum"),
     ).reset_index()
     lead["% antecipado"] = lead["antecipados"] / lead["pedidos"].replace(0, np.nan)
     lead["ns"] = (lead["antecipados"] + lead["no_prazo"]) / lead["pedidos"].replace(0, np.nan)
-    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(100)), width="stretch")
+    st.dataframe(style_table(lead.sort_values(["oportunidade", "pedidos"], ascending=False).head(150)), use_container_width=True)
 
-with tab3:
-    st.subheader("Negociação Completa por Transportador")
-    lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)", "transportador"])
-    st.dataframe(style_table(lt[lt["pedidos"] >= min_volume].head(100)), width="stretch")
+with tab5:
+    st.subheader("Negociação por Transportador")
+    lt = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "localizacao_comercial", "transportador (grupo)"])
+    lt = lt[lt["pedidos"] >= min_volume]
+    st.dataframe(style_table(lt.head(150)), use_container_width=True)
+    if not lt.empty:
+        st.plotly_chart(bar(lt.head(25).sort_values("oportunidade"), "oportunidade", "transportador (grupo)", "Oportunidade por Transportador (grupo)", color="classe_acao", orientation="h", height=720), use_container_width=True)
 
-with tab4:
-    st.subheader("Análise de Malhas por Cidade")
+with tab6:
+    st.subheader("Cidade e CEP")
     cidade_df = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente"])
-    st.dataframe(style_table(cidade_df[cidade_df["pedidos"] >= min_volume].head(100)), width="stretch")
+    cidade_df = cidade_df[cidade_df["pedidos"] >= min_volume]
+    st.dataframe(style_table(cidade_df.head(100)), use_container_width=True)
+    if not cidade_df.empty:
+        st.plotly_chart(bar(cidade_df.head(25).sort_values("score_prioridade"), "score_prioridade", "cidade cliente", "Prioridade por Cidade", color="classe_acao", orientation="h", height=720), use_container_width=True)
 
-    st.subheader("Análise de Micro-região (Top CEP5 e CEP3)")
     cep5 = agg_metrics(df, ["geografia_comercial", "modal", "ecc", "cd faturamento", "cd responsavel", "uf cliente", "cidade cliente", "cep_prefixo5", "localizacao_comercial", "transportador (grupo)"])
-    st.dataframe(style_table(cep5[cep5["pedidos"] >= max(5, min_volume // 3)].head(100)), width="stretch")
+    cep5 = cep5[cep5["pedidos"] >= max(5, min_volume // 3)]
+    st.subheader("Top CEP5")
+    st.dataframe(style_table(cep5.head(150)), use_container_width=True)
