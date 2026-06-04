@@ -114,7 +114,15 @@ def fmt_pct(x):
 # =========================
 @st.cache_data(show_spinner="Carregando malha de dados ultra compactada... Aguarde.")
 def carregar_dados_parquet(url):
-    return pd.read_parquet(url)
+    df = pd.read_parquet(url)
+    # Normalização forçada de colunas caso o Parquet venha com formatos mistos
+    df.columns = [str(c).strip().strip('"').strip().lower() for c in df.columns]
+    
+    # GARANTIA ANTI-KEYERROR: Se não houver a coluna 'modal', mas houver 'modal transp', faz o espelhamento
+    if "modal" not in df.columns and "modal transp" in df.columns:
+        df["modal"] = df["modal transp"]
+        
+    return df
 
 LINK_DO_MEU_PARQUET = "https://github.com/gabrielsmartins-creator/dashboard-sla/releases/download/v1.0/modal_realizado.parquet"
 
